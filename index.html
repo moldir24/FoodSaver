@@ -1,0 +1,1492 @@
+<!doctype html>
+<html lang="ru" class="h-full antialiased">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SaveFood — спасай еду, экономь деньги</title>
+    <meta
+      name="description"
+      content="Забирай непроданную еду из кафе, пекарен и магазинов Казахстана со скидкой до 70%. Меньше отходов — больше пользы."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&subset=cyrillic,latin"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+    />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Копия src/app/globals.css: те же переменные, та же анимация, те же маркеры -->
+    <style>
+      :root {
+        /* Нейтральные */
+        --background: #f7f8f6;
+        --surface: #ffffff;
+        --surface-muted: #f0f2ee;
+        --foreground: #16201a;
+        --muted-foreground: #5e6b62;
+        --border: #e0e4dc;
+
+        /* Бренд: «спасённая еда» — зелёный */
+        --brand: #1f9254;
+        --brand-hover: #197a45;
+        --brand-foreground: #ffffff;
+        --brand-subtle: #e7f5ec;
+        --brand-strong: #0e3f26;
+
+        /* Акцент для скидок и «успей забрать» */
+        --accent: #e8590c;
+        --accent-subtle: #fdf0e6;
+
+        --danger: #c92a2a;
+        --danger-subtle: #fdecec;
+
+        --radius: 0.75rem;
+        --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+      }
+
+      body {
+        background: var(--background);
+        color: var(--foreground);
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+      }
+
+      @keyframes savefood-rise {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      .savefood-rise {
+        animation: savefood-rise 0.5s ease-out both;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .savefood-rise {
+          animation: none;
+        }
+      }
+
+      .savefood-marker {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem 0.5rem;
+        border: 2px solid var(--surface);
+        border-radius: 999px;
+        background: var(--brand);
+        color: var(--brand-foreground);
+        font: 600 0.75rem / 1 var(--font-inter), sans-serif;
+        white-space: nowrap;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+        transition:
+          transform 0.12s ease,
+          background-color 0.12s ease;
+      }
+
+      .savefood-marker:hover,
+      .savefood-marker.is-active {
+        background: var(--accent);
+        transform: scale(1.12);
+        z-index: 1;
+      }
+
+      .savefood-user-marker {
+        width: 0.875rem;
+        height: 0.875rem;
+        border: 2px solid var(--surface);
+        border-radius: 999px;
+        background: #1c7ed6;
+        box-shadow: 0 0 0 4px rgb(28 126 214 / 0.25);
+      }
+    </style>
+
+    <style type="text/tailwindcss">
+      @theme inline {
+        --color-background: var(--background);
+        --color-surface: var(--surface);
+        --color-surface-muted: var(--surface-muted);
+        --color-foreground: var(--foreground);
+        --color-muted-foreground: var(--muted-foreground);
+        --color-border: var(--border);
+
+        --color-brand: var(--brand);
+        --color-brand-hover: var(--brand-hover);
+        --color-brand-foreground: var(--brand-foreground);
+        --color-brand-subtle: var(--brand-subtle);
+        --color-brand-strong: var(--brand-strong);
+
+        --color-accent: var(--accent);
+        --color-accent-subtle: var(--accent-subtle);
+
+        --color-danger: var(--danger);
+        --color-danger-subtle: var(--danger-subtle);
+
+        --font-sans: var(--font-inter);
+
+        --radius-card: var(--radius);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-full flex flex-col font-sans">
+    <!-- ——— Шапка (SiteHeader, состояние «гость») ——— -->
+    <header
+      class="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur"
+    >
+      <div
+        class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4"
+      >
+        <a href="#/" class="text-lg font-bold tracking-tight">
+          <span class="text-brand">Save</span>Food
+        </a>
+
+        <nav class="flex items-center gap-1">
+          <button
+            type="button"
+            data-demo-auth
+            class="inline-flex items-center justify-center gap-2 rounded-card font-medium transition-colors text-foreground hover:bg-surface-muted h-9 px-3 text-sm"
+          >
+            Войти
+          </button>
+          <button
+            type="button"
+            data-demo-auth
+            class="inline-flex items-center justify-center gap-2 rounded-card font-medium transition-colors bg-brand text-brand-foreground hover:bg-brand-hover h-9 px-3 text-sm"
+          >
+            Начать
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <div id="app" class="flex flex-1 flex-col"></div>
+
+    <footer
+      class="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground"
+    >
+      SaveFood · спасаем еду в Казахстане
+    </footer>
+
+    <script>
+      /* ============================================================
+         Статичное демо SaveFood для GitHub Pages.
+         Разметка повторяет Next-приложение, данные — из prisma/seed.ts,
+         окна выдачи пересчитываются от текущей даты при загрузке.
+         ============================================================ */
+
+      /* ---------- Картинки (src/lib/images.ts) ---------- */
+      const UNSPLASH = {
+        bakery: "photo-1509440159596-0249088772ff",
+        bread: "photo-1549931319-a545dcf3bc73",
+        pastry: "photo-1555507036-ab1f4038808a",
+        cafe: "photo-1501339847302-ac426a4a7cbb",
+        coffee: "photo-1554118811-1e0d58224f24",
+        sandwich: "photo-1528735602780-2552fd46c7af",
+        salad: "photo-1512621776951-a57141f2eefd",
+        dessert: "photo-1488477181946-6428a0291777",
+        cake: "photo-1578985545062-69928b1d9587",
+        grocery: "photo-1542838132-92c53300491e",
+        market: "photo-1578916171728-46686eac8d58",
+        vegetables: "photo-1540420773420-3366772f4999",
+        meals: "photo-1546069901-ba9599a7e63c",
+        lunchbox: "photo-1467003909585-2f8a72700288",
+        restaurant: "photo-1517248135467-4c7edcad34c4",
+        drinks: "photo-1544145945-f90425340c7e",
+        hotel: "photo-1566073771259-6a8506099945",
+      };
+
+      const unsplash = (key, width = 800) =>
+        `https://images.unsplash.com/${UNSPLASH[key]}?auto=format&fit=crop&w=${width}&q=70`;
+
+      const BY_LOCATION_KIND = {
+        BAKERY: "bakery",
+        CAFE: "cafe",
+        RESTAURANT: "restaurant",
+        SUPERMARKET: "market",
+        HOTEL: "hotel",
+        OTHER: "meals",
+      };
+
+      const BY_OFFER_CATEGORY = {
+        BAKERY: "bread",
+        MEALS: "lunchbox",
+        GROCERIES: "vegetables",
+        DESSERTS: "dessert",
+        DRINKS: "drinks",
+        OTHER: "meals",
+      };
+
+      const locationImage = (kind, imageUrl, width = 800) =>
+        imageUrl || unsplash(BY_LOCATION_KIND[kind], width);
+      const offerImage = (category, imageUrl, width = 800) =>
+        imageUrl || unsplash(BY_OFFER_CATEGORY[category], width);
+
+      /* ---------- Форматирование (src/lib/format.ts) ---------- */
+      const TZ = "Asia/Almaty";
+      const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
+        timeZone: TZ,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const timeFmt = new Intl.DateTimeFormat("ru-KZ", {
+        timeZone: TZ,
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const dateFmt = new Intl.DateTimeFormat("ru-KZ", {
+        timeZone: TZ,
+        day: "numeric",
+        month: "long",
+      });
+      const numberFmt = new Intl.NumberFormat("ru-KZ", {
+        maximumFractionDigits: 0,
+      });
+
+      const formatTenge = (amount) => `${numberFmt.format(amount)} ₸`;
+
+      function discountPercent(originalPrice, price) {
+        if (originalPrice <= 0 || price >= originalPrice) return 0;
+        return Math.floor(((originalPrice - price) / originalPrice) * 100);
+      }
+
+      function formatPickupWindow(start, end, now = new Date()) {
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        let prefix;
+        if (dayKeyFmt.format(start) === dayKeyFmt.format(now))
+          prefix = "сегодня";
+        else if (dayKeyFmt.format(start) === dayKeyFmt.format(tomorrow))
+          prefix = "завтра";
+        else prefix = dateFmt.format(start);
+
+        return `${prefix} ${timeFmt.format(start)} – ${timeFmt.format(end)}`;
+      }
+
+      function pluralPackages(count) {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${count} пакет`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+          return `${count} пакета`;
+        return `${count} пакетов`;
+      }
+
+      function distanceKm(from, to) {
+        const R = 6371;
+        const toRad = (deg) => (deg * Math.PI) / 180;
+        const dLat = toRad(to.lat - from.lat);
+        const dLng = toRad(to.lng - from.lng);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(from.lat)) *
+            Math.cos(toRad(to.lat)) *
+            Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      const formatDistance = (km) =>
+        km < 1
+          ? `${Math.round(km * 1000)} м`
+          : `${km.toFixed(1).replace(".", ",")} км`;
+
+      const esc = (value) =>
+        String(value ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+
+      /* ---------- Демо-данные (prisma/seed.ts) ---------- */
+      const KIND_LABELS = {
+        BAKERY: "Пекарня",
+        CAFE: "Кафе",
+        RESTAURANT: "Ресторан",
+        SUPERMARKET: "Магазин",
+        HOTEL: "Отель",
+        OTHER: "Заведение",
+      };
+
+      const CATEGORY_LABELS = {
+        BAKERY: "Выпечка и хлеб",
+        MEALS: "Готовая еда",
+        GROCERIES: "Продукты",
+        DESSERTS: "Десерты",
+        DRINKS: "Напитки",
+        OTHER: "Другое",
+      };
+
+      const SEED = [
+        {
+          id: "nan-abaya",
+          title: "Нан Дәстүр — Абая",
+          kind: "BAKERY",
+          address: "пр. Абая, 115",
+          city: "Алматы",
+          lat: 43.2401,
+          lng: 76.9095,
+          pickupNote: "Вход с проспекта, спросите на кассе «пакет SaveFood»",
+          image: "bakery",
+          businessName: "Нан Дәстүр",
+          businessDescription:
+            "Сеть пекарен полного цикла. Печём четыре раза в день.",
+          phone: null,
+          offers: [
+            {
+              id: "nan-abaya-surprise",
+              title: "Пекарский сюрприз",
+              image: "pastry",
+              description:
+                "3–5 изделий из того, что осталось к вечеру: багеты, булочки, слойки.",
+              category: "BAKERY",
+              originalPrice: 3600,
+              price: 1200,
+              allergens: "Глютен, молоко, яйца. Возможны следы орехов.",
+              pickup: [19, 21],
+              quantity: 8,
+            },
+          ],
+        },
+        {
+          id: "nan-seyfullina",
+          title: "Нан Дәстүр — Сейфуллина",
+          kind: "BAKERY",
+          address: "ул. Сейфуллина, 498",
+          city: "Алматы",
+          lat: 43.2567,
+          lng: 76.9286,
+          pickupNote: null,
+          image: "bread",
+          businessName: "Нан Дәстүр",
+          businessDescription:
+            "Сеть пекарен полного цикла. Печём четыре раза в день.",
+          phone: null,
+          offers: [
+            {
+              id: "nan-seyfullina-morning",
+              title: "Утренняя корзина",
+              image: "bread",
+              description:
+                "Вчерашний хлеб и выпечка — ещё мягкие, уже дешевле.",
+              category: "BAKERY",
+              originalPrice: 2800,
+              price: 900,
+              allergens: "Глютен, молоко.",
+              pickup: [9, 11],
+              quantity: 5,
+            },
+          ],
+        },
+        {
+          id: "coffee-dostyk",
+          title: "Coffee Point — Достык Плаза",
+          kind: "CAFE",
+          address: "пр. Достык, 111, 1 этаж",
+          city: "Алматы",
+          lat: 43.2335,
+          lng: 76.9558,
+          pickupNote: "Первый этаж ТРЦ, справа от главного входа",
+          image: "cafe",
+          businessName: "Coffee Point",
+          businessDescription:
+            "Кофейня со своей кухней: сэндвичи, салаты, десерты.",
+          phone: null,
+          offers: [
+            {
+              id: "coffee-lunch",
+              title: "Ланч-бокс дня",
+              image: "sandwich",
+              description:
+                "Сэндвич или салат с витрины плюс десерт. Состав зависит от дня.",
+              category: "MEALS",
+              originalPrice: 4500,
+              price: 1700,
+              allergens: "Глютен, молоко, горчица. Возможны следы рыбы.",
+              pickup: [20, 22],
+              quantity: 6,
+            },
+            {
+              id: "coffee-dessert",
+              title: "Десертный набор",
+              image: "cake",
+              description:
+                "Два-три пирожных из витрины, которые не доживут до утра.",
+              category: "DESSERTS",
+              originalPrice: 3200,
+              price: 1100,
+              allergens: "Глютен, молоко, яйца, орехи.",
+              pickup: [20, 22],
+              quantity: 4,
+            },
+          ],
+        },
+        {
+          id: "asia-kabanbay",
+          title: "Азия Маркет — Кабанбай батыра",
+          kind: "SUPERMARKET",
+          address: "пр. Кабанбай батыра, 53",
+          city: "Астана",
+          lat: 51.1283,
+          lng: 71.4305,
+          pickupNote: null,
+          image: "market",
+          businessName: "Азия Маркет",
+          businessDescription:
+            "Магазин у дома: молочка, овощи, готовая кулинария.",
+          phone: null,
+          offers: [
+            {
+              id: "asia-kabanbay-basket",
+              title: "Продуктовая корзина",
+              image: "vegetables",
+              description:
+                "Молочка и овощи с близким сроком годности. Годны ещё 1–2 дня.",
+              category: "GROCERIES",
+              originalPrice: 5000,
+              price: 1800,
+              allergens: "Молоко. Состав меняется ежедневно.",
+              pickup: [19, 22],
+              quantity: 10,
+            },
+          ],
+        },
+        {
+          id: "asia-saryarka",
+          title: "Азия Маркет — Сарыарка",
+          kind: "SUPERMARKET",
+          address: "пр. Сарыарка, 31",
+          city: "Астана",
+          lat: 51.1605,
+          lng: 71.4704,
+          pickupNote: null,
+          image: "grocery",
+          businessName: "Азия Маркет",
+          businessDescription:
+            "Магазин у дома: молочка, овощи, готовая кулинария.",
+          phone: null,
+          offers: [
+            {
+              id: "asia-saryarka-kitchen",
+              title: "Кулинария на вынос",
+              image: "meals",
+              description: "Готовые блюда с горячей витрины в конце дня.",
+              category: "MEALS",
+              originalPrice: 4200,
+              price: 1500,
+              allergens: "Глютен, молоко, яйца.",
+              pickup: [20, 21],
+              quantity: 7,
+            },
+          ],
+        },
+      ];
+
+      const ALMATY_OFFSET_HOURS = 5;
+
+      /** Момент окна выдачи: сегодня/завтра по календарю Алматы. */
+      function pickupAt(dayOffset, hour) {
+        const nowLocal = new Date(Date.now() + ALMATY_OFFSET_HOURS * 3600000);
+        return new Date(
+          Date.UTC(
+            nowLocal.getUTCFullYear(),
+            nowLocal.getUTCMonth(),
+            nowLocal.getUTCDate() + dayOffset,
+            hour - ALMATY_OFFSET_HOURS,
+          ),
+        );
+      }
+
+      /**
+       * Аналог findAvailableLocations: собирает партии на сегодня и завтра,
+       * выбрасывает закрывшиеся окна и считает те же производные поля.
+       */
+      function buildLocations() {
+        const now = new Date();
+
+        return SEED.map((loc) => {
+          const offers = loc.offers
+            .map((offer) => {
+              const batches = [0, 1]
+                .map((dayOffset) => ({
+                  id: `${offer.id}-${dayOffset}`,
+                  pickupStart: pickupAt(dayOffset, offer.pickup[0]),
+                  pickupEnd: pickupAt(dayOffset, offer.pickup[1]),
+                  available: offer.quantity,
+                }))
+                .filter((b) => b.pickupEnd > now)
+                .sort((a, b) => a.pickupStart - b.pickupStart);
+
+              return {
+                ...offer,
+                imageUrl: offer.image ? unsplash(offer.image, 800) : null,
+                batches,
+              };
+            })
+            .filter((offer) => offer.batches.length > 0)
+            .sort((a, b) => a.price - b.price);
+
+          const allBatches = offers.flatMap((o) => o.batches);
+          const nextBatch = allBatches.reduce(
+            (earliest, b) =>
+              !earliest || b.pickupStart < earliest.pickupStart ? b : earliest,
+            null,
+          );
+
+          return {
+            ...loc,
+            imageUrl: loc.image ? unsplash(loc.image, 1400) : null,
+            offers,
+            minPrice: offers[0]?.price ?? 0,
+            minPriceOriginal: offers[0]?.originalPrice ?? 0,
+            totalAvailable: allBatches.reduce((sum, b) => sum + b.available, 0),
+            nextPickup: nextBatch
+              ? { start: nextBatch.pickupStart, end: nextBatch.pickupEnd }
+              : null,
+          };
+        });
+      }
+
+      const ALL_LOCATIONS = buildLocations();
+
+      const availableLocations = (filters = {}) =>
+        ALL_LOCATIONS.filter((l) => {
+          if (l.offers.length === 0) return false;
+          if (filters.city && l.city !== filters.city) return false;
+          return l.offers.some(
+            (o) =>
+              (!filters.category || o.category === filters.category) &&
+              (!filters.maxPrice || o.price <= filters.maxPrice),
+          );
+        }).sort((a, b) => a.nextPickup.start - b.nextPickup.start);
+
+      const CITIES = [...new Set(ALL_LOCATIONS.map((l) => l.city))].sort();
+
+      /* ---------- Кнопка (src/components/ui/button.tsx) ---------- */
+      const BTN_VARIANTS = {
+        primary:
+          "bg-brand text-brand-foreground hover:bg-brand-hover disabled:bg-brand/50",
+        secondary:
+          "bg-surface text-foreground border border-border hover:bg-surface-muted",
+        ghost: "text-foreground hover:bg-surface-muted",
+      };
+      const BTN_SIZES = {
+        sm: "h-9 px-3 text-sm",
+        md: "h-11 px-4 text-sm",
+        lg: "h-12 px-6 text-base",
+      };
+      const btnClass = (variant = "primary", size = "md") =>
+        `inline-flex items-center justify-center gap-2 rounded-card font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${BTN_VARIANTS[variant]} ${BTN_SIZES[size]}`;
+
+      /* ---------- Карточка предложения (offer-card.tsx) ---------- */
+      function offerCardHtml(location, km) {
+        const discount = discountPercent(
+          location.minPriceOriginal,
+          location.minPrice,
+        );
+        const isLast = location.totalAvailable <= 2;
+
+        return `
+          <a href="#/places/${esc(location.id)}" data-card="${esc(location.id)}"
+             class="block overflow-hidden rounded-card border bg-surface transition-colors border-border hover:border-brand">
+            <div class="relative h-36 w-full bg-surface-muted">
+              <img src="${esc(locationImage(location.kind, location.imageUrl, 640))}" alt=""
+                   loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+              ${
+                discount > 0
+                  ? `<span class="absolute left-3 top-3 rounded-full bg-accent px-2 py-1 text-xs font-semibold text-white shadow">−${discount}%</span>`
+                  : ""
+              }
+              ${
+                isLast
+                  ? `<span class="absolute right-3 top-3 rounded-full bg-surface/95 px-2 py-1 text-xs font-semibold text-accent shadow">Осталось мало</span>`
+                  : ""
+              }
+            </div>
+
+            <div class="p-4">
+              <h3 class="truncate font-semibold">${esc(location.title)}</h3>
+              <p class="truncate text-sm text-muted-foreground">
+                ${esc(KIND_LABELS[location.kind])} · ${esc(location.businessName)}
+              </p>
+
+              <p class="mt-3 text-sm text-muted-foreground">
+                Забрать ${esc(formatPickupWindow(location.nextPickup.start, location.nextPickup.end))}
+              </p>
+
+              <p class="mt-1 truncate text-sm text-muted-foreground">
+                ${esc(location.address)}${km !== undefined ? ` · ${esc(formatDistance(km))}` : ""}
+              </p>
+
+              <div class="mt-4 flex items-end justify-between gap-3">
+                <div>
+                  <span class="text-lg font-bold">${esc(formatTenge(location.minPrice))}</span>
+                  ${
+                    discount > 0
+                      ? `<span class="ml-2 text-sm text-muted-foreground line-through">${esc(formatTenge(location.minPriceOriginal))}</span>`
+                      : ""
+                  }
+                </div>
+                <span class="text-xs font-medium ${isLast ? "text-accent" : "text-muted-foreground"}">
+                  ${esc(pluralPackages(location.totalAvailable))}
+                </span>
+              </div>
+            </div>
+          </a>`;
+      }
+
+      /* ---------- Главная (src/app/page.tsx) ---------- */
+      const STEPS = [
+        {
+          title: "Найдите заведение рядом",
+          text: "Пекарни, кафе и магазины показывают, что у них осталось к концу дня.",
+          icon: `<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" /><circle cx="12" cy="10" r="2.5" />`,
+        },
+        {
+          title: "Забронируйте сюрприз-пакет",
+          text: "Состав заранее неизвестен — зато цена ниже обычной в два-три раза.",
+          icon: `<path d="M5.5 8h13l-1 11.5a1 1 0 0 1-1 .9H7.5a1 1 0 0 1-1-.9L5.5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />`,
+        },
+        {
+          title: "Заберите в своё окно",
+          text: "Покажите QR-код на кассе и оплатите на месте. Всё.",
+          icon: `<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M20 8V5.5A1.5 1.5 0 0 0 18.5 4H16M4 16v2.5A1.5 1.5 0 0 0 5.5 20H8M20 16v2.5A1.5 1.5 0 0 1 18.5 20H16" /><path d="M7.5 12h9" />`,
+        },
+      ];
+
+      const HOME_CATEGORIES = [
+        { category: "BAKERY", label: "Выпечка", image: "bread" },
+        { category: "MEALS", label: "Готовая еда", image: "lunchbox" },
+        { category: "GROCERIES", label: "Продукты", image: "vegetables" },
+        { category: "DESSERTS", label: "Десерты", image: "dessert" },
+        { category: "DRINKS", label: "Напитки", image: "drinks" },
+        { category: "OTHER", label: "Всё сразу", image: "market" },
+      ];
+
+      const FAQ = [
+        {
+          q: "Что лежит в сюрприз-пакете?",
+          a: "То, что не продалось за день: у пекарни — хлеб и выпечка, у кафе — готовые блюда. Точный состав заранее не знает даже заведение, поэтому и цена ниже. Категорию и аллергены видно в карточке до брони.",
+        },
+        {
+          q: "Как и когда платить?",
+          a: "Бронь бесплатная, оплата — на месте при получении. Если планы изменились, отмените бронь в «Моих заказах» до начала окна выдачи.",
+        },
+        {
+          q: "А если я не успею прийти?",
+          a: "Окно выдачи указано в карточке и в заказе. Если не прийти и не отменить бронь, пакет просто пропадёт — поэтому лучше отменить заранее, его успеет забрать кто-то другой.",
+        },
+        {
+          q: "Это точно свежая еда?",
+          a: "Да. Заведения выставляют то, что приготовили или привезли сегодня и что по правилам нельзя продавать на следующий день. Это не просрочка, а остатки дня.",
+        },
+      ];
+
+      function homeView() {
+        const locations = availableLocations().slice(0, 3);
+
+        return `
+<main class="flex-1">
+  <!-- ——— Герой ——— -->
+  <section class="relative overflow-x-clip">
+    <div aria-hidden class="pointer-events-none absolute -top-56 left-1/2 h-[30rem] w-[70rem] -translate-x-1/2 rounded-full bg-brand-subtle opacity-80 blur-3xl"></div>
+
+    <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-20">
+      <div class="savefood-rise">
+        <p class="mb-5 inline-flex items-center gap-2 rounded-full border border-brand/20 bg-surface/80 px-3 py-1.5 text-xs font-medium text-brand shadow-sm backdrop-blur">
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-brand opacity-60"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-brand"></span>
+          </span>
+          Скоро в Алматы и Астане
+        </p>
+
+        <h1 class="max-w-2xl text-pretty text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+          Хорошая еда не должна оказываться
+          <span class="text-muted-foreground line-through decoration-accent decoration-4">в мусорном баке</span>
+        </h1>
+
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Заведения отдают непроданное за день со скидкой до 70%. Вы экономите, они не выбрасывают, еда идёт по назначению.
+        </p>
+
+        <div class="mt-8 flex flex-wrap gap-3">
+          <button type="button" data-demo-auth class="${btnClass("primary", "lg")}">Начать спасать еду</button>
+          <a href="#/explore"><span class="${btnClass("secondary", "lg")}">Посмотреть без регистрации</span></a>
+        </div>
+
+        <div class="mt-10 grid max-w-lg grid-cols-3 gap-6 border-t border-border pt-7">
+          ${[
+            { value: "до 70%", label: "ниже обычной цены" },
+            { value: "от 990 ₸", label: "за сюрприз-пакет" },
+            { value: "0 ₸", label: "подключение заведения" },
+          ]
+            .map(
+              (stat) => `
+            <div>
+              <p class="text-xl font-bold tracking-tight sm:text-2xl">${stat.value}</p>
+              <p class="mt-1 text-xs leading-snug text-muted-foreground">${stat.label}</p>
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <!-- Коллаж: высокое фото слева, два квадрата справа тянутся по его высоте -->
+      <div class="savefood-rise relative" style="animation-delay: 120ms">
+        <div class="grid grid-cols-2 gap-3 sm:gap-4">
+          <div class="relative aspect-[3/4] overflow-hidden rounded-card bg-surface-muted shadow-sm">
+            <img src="${unsplash("bakery", 640)}" alt="Витрина пекарни с выпечкой к концу дня" class="absolute inset-0 h-full w-full object-cover" />
+          </div>
+          <div class="grid grid-rows-2 gap-3 sm:gap-4">
+            <div class="relative overflow-hidden rounded-card bg-surface-muted shadow-sm">
+              <img src="${unsplash("pastry", 480)}" alt="Круассаны и выпечка на витрине" class="absolute inset-0 h-full w-full object-cover" />
+            </div>
+            <div class="relative overflow-hidden rounded-card bg-surface-muted shadow-sm">
+              <img src="${unsplash("grocery", 480)}" alt="Полка с продуктами в магазине" class="absolute inset-0 h-full w-full object-cover" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Образец цены: объясняет механику пакета быстрее любого текста -->
+        <div class="absolute bottom-3 left-3 flex items-center gap-3 rounded-card border border-border bg-surface/95 p-3 shadow-lg backdrop-blur sm:bottom-4 sm:left-4">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-sm font-bold text-accent">−70%</span>
+          <span class="text-sm leading-tight">
+            <span class="block font-semibold">Сюрприз-пакет</span>
+            <span class="text-muted-foreground line-through">${formatTenge(4500)}</span>
+            <span class="font-semibold text-brand">${formatTenge(1350)}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ——— Живая витрина ——— -->
+  ${
+    locations.length > 0
+      ? `
+  <section class="mx-auto max-w-6xl px-4 pb-4">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h2 class="text-2xl font-semibold tracking-tight">Можно забрать сегодня</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Пакеты, которые ждут хозяина прямо сейчас</p>
+      </div>
+      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">Все предложения →</a>
+    </div>
+
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      ${locations.map((l) => offerCardHtml(l)).join("")}
+    </div>
+  </section>`
+      : ""
+  }
+
+  <!-- ——— Как это работает ——— -->
+  <section class="mt-12 border-y border-border bg-surface">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+      <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">Три шага и пакет ваш</h2>
+
+      <div class="relative mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
+        ${STEPS.map(
+          (step, i) => `
+        <div class="relative">
+          ${
+            i < STEPS.length - 1
+              ? `<span aria-hidden class="absolute -right-8 left-14 top-6 hidden border-t border-dashed border-border sm:block"></span>`
+              : ""
+          }
+          <span class="relative mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-brand-subtle text-brand ring-8 ring-surface">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="h-6 w-6">${step.icon}</svg>
+            <span class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">${i + 1}</span>
+          </span>
+          <h3 class="mb-2 font-semibold">${step.title}</h3>
+          <p class="text-sm leading-relaxed text-muted-foreground">${step.text}</p>
+        </div>`,
+        ).join("")}
+      </div>
+    </div>
+  </section>
+
+  <!-- ——— Категории ——— -->
+  <section class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Что обычно спасают</h2>
+      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">Открыть витрину →</a>
+    </div>
+
+    <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      ${HOME_CATEGORIES.map(
+        (item) => `
+      <li>
+        <a href="#/explore?category=${item.category}" class="group relative block aspect-[4/5] overflow-hidden rounded-card bg-surface-muted shadow-sm transition-shadow hover:shadow-md">
+          <img src="${unsplash(item.image, 400)}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          <span aria-hidden class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></span>
+          <span class="absolute inset-x-0 bottom-0 p-3 text-sm font-semibold text-white">${item.label}</span>
+        </a>
+      </li>`,
+      ).join("")}
+    </ul>
+  </section>
+
+  <!-- ——— Зачем это нужно ——— -->
+  <section class="bg-brand-strong text-white">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+      <div class="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-white/60">Зачем это нужно</p>
+          <h2 class="mt-4 text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
+            Около трети всей еды в мире не доходит до стола
+          </h2>
+          <p class="mt-5 max-w-xl leading-relaxed text-white/75">
+            Хлеб, который не продали до закрытия, салаты с истекающей витриной, лишний ящик овощей — всё это уезжает на свалку, где гниёт и греет атмосферу. При этом еда абсолютно нормальная: ей просто не хватило покупателя.
+          </p>
+          <p class="mt-4 max-w-xl leading-relaxed text-white/75">
+            SaveFood закрывает этот разрыв: заведению — выручка вместо списания, вам — ужин за треть цены.
+          </p>
+        </div>
+
+        <dl class="grid gap-4 sm:grid-cols-3">
+          ${[
+            { term: "Заведению", value: "выручка вместо списания" },
+            { term: "Вам", value: "еда дешевле в 2–3 раза" },
+            { term: "Городу", value: "меньше мусора на свалке" },
+          ]
+            .map(
+              (item) => `
+          <div class="rounded-card border border-white/15 bg-white/5 p-5">
+            <dt class="text-xs font-semibold uppercase tracking-widest text-white/60">${item.term}</dt>
+            <dd class="mt-2 font-semibold leading-snug">${item.value}</dd>
+          </div>`,
+            )
+            .join("")}
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ——— Заведениям ——— -->
+  <section class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
+    <div class="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+      <div class="grid lg:grid-cols-2">
+        <div class="p-8 sm:p-10 lg:p-12">
+          <p class="text-xs font-semibold uppercase tracking-widest text-accent">Для бизнеса</p>
+          <h2 class="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">У вас кафе или пекарня?</h2>
+          <p class="mt-4 max-w-xl leading-relaxed text-muted-foreground">
+            Списание непроданного — это прямой убыток. Превратите его в выручку и новых гостей: разместите сюрприз-пакет за пару минут.
+          </p>
+
+          <ul class="mt-6 space-y-3 text-sm">
+            ${[
+              "Бесплатное подключение, без абонентской платы",
+              "Пакет и окно выдачи настраиваются за пару минут",
+              "Гости приходят к закрытию и возвращаются днём",
+            ]
+              .map(
+                (item) => `
+            <li class="flex gap-3">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="mt-0.5 h-4 w-4 shrink-0 text-brand">
+                <path d="M4 10.5l4 4 8-9" />
+              </svg>
+              <span class="text-muted-foreground">${item}</span>
+            </li>`,
+              )
+              .join("")}
+          </ul>
+
+          <button type="button" data-demo-auth class="mt-8 ${btnClass("primary", "lg")}">Подключить заведение</button>
+        </div>
+
+        <div class="relative min-h-60 bg-surface-muted lg:min-h-0">
+          <img src="${unsplash("cafe", 800)}" alt="Бариста за стойкой кафе" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ——— Вопросы ——— -->
+  <section class="mx-auto max-w-3xl px-4 pb-20">
+    <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">Частые вопросы</h2>
+
+    <div class="mt-8 divide-y divide-border overflow-hidden rounded-card border border-border bg-surface">
+      ${FAQ.map(
+        (item) => `
+      <details class="group">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 font-medium hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
+          ${item.q}
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45">
+            <path d="M10 4v12M4 10h12" />
+          </svg>
+        </summary>
+        <p class="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">${item.a}</p>
+      </details>`,
+      ).join("")}
+    </div>
+
+    <div class="mt-10 rounded-card bg-brand-subtle p-8 text-center">
+      <h3 class="text-xl font-semibold tracking-tight">Готовы спасти первый пакет?</h3>
+      <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Регистрация занимает минуту, бронь — ещё меньше.</p>
+      <button type="button" data-demo-auth class="mt-6 ${btnClass("primary", "lg")}">Создать аккаунт</button>
+    </div>
+  </section>
+</main>`;
+      }
+
+      /* ---------- Витрина (src/app/explore/page.tsx) ---------- */
+      const PRICE_OPTIONS = [1000, 1500, 2000, 3000];
+      const selectClass =
+        "h-10 rounded-card border border-border bg-surface px-3 text-sm text-foreground";
+
+      /** Позиция пользователя живёт между перерисовками, как состояние в React. */
+      let userPosition = null;
+      let geoError = null;
+      let geoPending = false;
+
+      function exploreView(params) {
+        const filters = {
+          city: params.get("city") || undefined,
+          category:
+            params.get("category") in CATEGORY_LABELS
+              ? params.get("category")
+              : undefined,
+          maxPrice: Number(params.get("maxPrice")) || undefined,
+        };
+
+        const locations = availableLocations(filters);
+        const hasFilters = [...params.keys()].length > 0;
+
+        const sorted = userPosition
+          ? locations
+              .map((location) => ({
+                location,
+                km: distanceKm(userPosition, location),
+              }))
+              .sort((a, b) => a.km - b.km)
+          : locations.map((location) => ({ location, km: undefined }));
+
+        const filtersBar = `
+      <div class="flex flex-wrap items-center gap-2 transition-opacity">
+        <label class="sr-only" for="filter-city">Город</label>
+        <select id="filter-city" data-filter="city" class="${selectClass}">
+          <option value="">Все города</option>
+          ${CITIES.map(
+            (city) =>
+              `<option value="${esc(city)}" ${filters.city === city ? "selected" : ""}>${esc(city)}</option>`,
+          ).join("")}
+        </select>
+
+        <label class="sr-only" for="filter-category">Категория</label>
+        <select id="filter-category" data-filter="category" class="${selectClass}">
+          <option value="">Любая категория</option>
+          ${Object.entries(CATEGORY_LABELS)
+            .map(
+              ([value, label]) =>
+                `<option value="${value}" ${filters.category === value ? "selected" : ""}>${label}</option>`,
+            )
+            .join("")}
+        </select>
+
+        <label class="sr-only" for="filter-price">Цена</label>
+        <select id="filter-price" data-filter="maxPrice" class="${selectClass}">
+          <option value="">Любая цена</option>
+          ${PRICE_OPTIONS.map(
+            (price) =>
+              `<option value="${price}" ${filters.maxPrice === price ? "selected" : ""}>до ${price.toLocaleString("ru-KZ")} ₸</option>`,
+          ).join("")}
+        </select>
+
+        ${
+          hasFilters
+            ? `<button type="button" data-reset-filters class="h-10 rounded-card px-3 text-sm text-muted-foreground underline hover:text-foreground">Сбросить</button>`
+            : ""
+        }
+      </div>`;
+
+        const results =
+          locations.length === 0
+            ? `
+      <div class="rounded-card border border-dashed border-border bg-surface p-10 text-center">
+        <p class="font-medium">Ничего не нашлось</p>
+        <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Под эти фильтры сейчас нет доступных пакетов. Попробуйте снять ограничение по цене или выбрать другой город — предложения появляются ближе к вечеру.
+        </p>
+      </div>`
+            : `
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm text-muted-foreground">
+              ${userPosition ? "Сначала ближайшие" : "Сначала те, что забирать раньше"}
+            </p>
+            ${
+              !userPosition
+                ? `<button type="button" data-locate class="${btnClass("secondary", "sm")}" ${geoPending ? "disabled" : ""}>${geoPending ? "Определяем…" : "Рядом со мной"}</button>`
+                : ""
+            }
+          </div>
+
+          ${
+            geoError
+              ? `<p class="rounded-card bg-danger-subtle px-3 py-2 text-xs text-danger">${esc(geoError)}</p>`
+              : ""
+          }
+
+          ${sorted.map(({ location, km }) => offerCardHtml(location, km)).join("")}
+        </div>
+
+        <!-- Карта залипает при прокрутке списка, но только там, где ей хватает высоты -->
+        <div class="h-[420px] overflow-hidden rounded-card border border-border lg:sticky lg:top-20 lg:h-[calc(100vh-7rem)]">
+          <div id="explore-map" class="h-full w-full"></div>
+        </div>
+      </div>`;
+
+        return `
+<main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
+  <h1 class="text-2xl font-semibold">Предложения рядом</h1>
+  <p class="mt-1 text-sm text-muted-foreground">
+    Состав пакета заранее неизвестен — в этом и смысл. Известны цена, место и время, когда его можно забрать.
+  </p>
+
+  <div class="my-6">${filtersBar}</div>
+
+  ${results}
+</main>`;
+      }
+
+      /* ---------- Карточка заведения (src/app/places/[id]/page.tsx) ---------- */
+      const MAX_PER_RESERVATION = 5;
+
+      function placeView(id) {
+        const location = ALL_LOCATIONS.find((l) => l.id === id);
+
+        if (!location) {
+          return `
+<main class="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 py-20 text-center">
+  <h1 class="text-2xl font-semibold">Заведение не найдено</h1>
+  <p class="mt-2 text-sm text-muted-foreground">Возможно, оно скрыло страницу или ссылка устарела.</p>
+  <a href="#/explore" class="mt-6 inline-block"><span class="${btnClass("primary", "md")}">Ко всем предложениям</span></a>
+</main>`;
+        }
+
+        const offersHtml =
+          location.offers.length === 0
+            ? `
+      <div class="rounded-card border border-dashed border-border bg-surface p-8 text-center text-sm text-muted-foreground">
+        Это заведение уже всё раздало или ещё не выставило пакеты на сегодня. Загляните ближе к вечеру.
+      </div>`
+            : `
+      <div class="flex flex-col gap-4">
+        ${location.offers
+          .map((offer) => {
+            const discount = discountPercent(offer.originalPrice, offer.price);
+            return `
+        <article class="overflow-hidden rounded-card border border-border bg-surface">
+          <div class="flex gap-4 p-4">
+            <div class="relative h-24 w-24 shrink-0 overflow-hidden rounded-card bg-surface-muted">
+              <img src="${esc(offerImage(offer.category, offer.imageUrl, 240))}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="font-semibold">${esc(offer.title)}</h3>
+                <div class="shrink-0 text-right">
+                  <div class="font-bold">${esc(formatTenge(offer.price))}</div>
+                  ${
+                    discount > 0
+                      ? `<div class="text-xs text-muted-foreground line-through">${esc(formatTenge(offer.originalPrice))}</div>`
+                      : ""
+                  }
+                </div>
+              </div>
+
+              ${
+                offer.description
+                  ? `<p class="mt-2 text-sm text-muted-foreground">${esc(offer.description)}</p>`
+                  : ""
+              }
+              ${
+                offer.allergens
+                  ? `<p class="mt-2 text-xs text-muted-foreground"><span class="font-medium">Аллергены:</span> ${esc(offer.allergens)}</p>`
+                  : ""
+              }
+            </div>
+          </div>
+
+          <ul class="flex flex-col gap-2 px-4 pb-4">
+            ${offer.batches
+              .map((batch) => {
+                const maxQuantity = Math.min(
+                  batch.available,
+                  MAX_PER_RESERVATION,
+                );
+                return `
+            <li class="flex flex-wrap items-center justify-between gap-3 rounded-card bg-surface-muted px-3 py-2">
+              <div class="text-sm">
+                <div class="font-medium">${esc(formatPickupWindow(batch.pickupStart, batch.pickupEnd))}</div>
+                <div class="text-xs text-muted-foreground">${esc(pluralPackages(batch.available))} в наличии</div>
+              </div>
+
+              <form data-booking class="flex flex-col items-end gap-2">
+                <div class="flex items-center gap-2">
+                  ${
+                    maxQuantity > 1
+                      ? `<label for="qty-${esc(batch.id)}" class="sr-only">Сколько пакетов</label>
+                         <select id="qty-${esc(batch.id)}" class="h-9 rounded-card border border-border bg-surface px-2 text-sm">
+                           ${Array.from({ length: maxQuantity }, (_, i) => i + 1)
+                             .map((n) => `<option value="${n}">${n} шт.</option>`)
+                             .join("")}
+                         </select>`
+                      : ""
+                  }
+                  <button type="submit" class="${btnClass("primary", "sm")}">Забронировать</button>
+                </div>
+                <p role="alert" hidden class="text-right text-xs text-danger"></p>
+              </form>
+            </li>`;
+              })
+              .join("")}
+          </ul>
+        </article>`;
+          })
+          .join("")}
+      </div>`;
+
+        return `
+<main class="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+  <a href="#/explore" class="text-sm text-muted-foreground underline hover:text-foreground">← Ко всем предложениям</a>
+
+  <div class="relative mt-4 h-56 w-full overflow-hidden rounded-card bg-surface-muted sm:h-72">
+    <img src="${esc(locationImage(location.kind, location.imageUrl, 1400))}" alt="" class="absolute inset-0 h-full w-full object-cover" />
+    <!-- Затемнение снизу: без него белый заголовок теряется на светлых фото -->
+    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+    <header class="absolute inset-x-0 bottom-0 p-5">
+      <h1 class="text-2xl font-semibold text-white drop-shadow">${esc(location.title)}</h1>
+      <p class="mt-1 text-sm text-white/90 drop-shadow">${esc(KIND_LABELS[location.kind])} · ${esc(location.businessName)}</p>
+    </header>
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <section>
+      <h2 class="mb-3 text-lg font-semibold">
+        ${location.offers.length > 0 ? "Что можно забрать" : "Сейчас предложений нет"}
+      </h2>
+      ${offersHtml}
+    </section>
+
+    <aside class="flex flex-col gap-4">
+      <div class="h-56 overflow-hidden rounded-card border border-border">
+        <div id="place-map" class="h-full w-full"></div>
+      </div>
+
+      <div class="rounded-card border border-border bg-surface p-4 text-sm">
+        <h2 class="mb-2 font-semibold">Как забрать</h2>
+        <p class="text-muted-foreground">${esc(location.address)}</p>
+        <p class="text-muted-foreground">${esc(location.city)}</p>
+        ${
+          location.pickupNote
+            ? `<p class="mt-2 rounded-card bg-brand-subtle px-3 py-2 text-brand">${esc(location.pickupNote)}</p>`
+            : ""
+        }
+        ${
+          location.phone
+            ? `<p class="mt-2 text-muted-foreground">Телефон: <a href="tel:${esc(location.phone)}" class="underline">${esc(location.phone)}</a></p>`
+            : ""
+        }
+        <p class="mt-3 text-xs text-muted-foreground">Оплата при получении — наличными или картой в заведении.</p>
+      </div>
+
+      ${
+        location.businessDescription
+          ? `<div class="rounded-card border border-border bg-surface p-4 text-sm">
+               <h2 class="mb-2 font-semibold">О заведении</h2>
+               <p class="text-muted-foreground">${esc(location.businessDescription)}</p>
+             </div>`
+          : ""
+      }
+    </aside>
+  </div>
+</main>`;
+      }
+
+      /* ---------- Карта (src/components/map/maplibre-map.tsx) ---------- */
+      const OSM_STYLE = {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            maxzoom: 19,
+            attribution: "© OpenStreetMap contributors",
+          },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      };
+
+      const FALLBACK_CENTER = [76.8897, 43.2389];
+
+      let map = null;
+      const markerElements = new Map();
+
+      function destroyMap() {
+        if (map) {
+          map.remove();
+          map = null;
+        }
+        markerElements.clear();
+      }
+
+      function createMap(container, markers, { zoom = 12 } = {}) {
+        destroyMap();
+
+        map = new maplibregl.Map({
+          container,
+          style: OSM_STYLE,
+          center: markers[0]
+            ? [markers[0].lng, markers[0].lat]
+            : FALLBACK_CENTER,
+          zoom,
+          attributionControl: { compact: true },
+        });
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+        for (const marker of markers) {
+          const el = document.createElement("button");
+          el.type = "button";
+          el.className = "savefood-marker";
+          el.textContent = marker.badge ?? marker.title;
+          el.title = marker.title;
+          if (marker.href) {
+            el.addEventListener("click", () => {
+              location.hash = marker.href;
+            });
+          }
+          el.addEventListener("mouseenter", () => setActive(marker.id));
+          el.addEventListener("mouseleave", () => setActive(null));
+
+          markerElements.set(marker.id, el);
+          new maplibregl.Marker({ element: el })
+            .setLngLat([marker.lng, marker.lat])
+            .addTo(map);
+        }
+
+        if (userPosition) {
+          const el = document.createElement("div");
+          el.className = "savefood-user-marker";
+          new maplibregl.Marker({ element: el })
+            .setLngLat([userPosition.lng, userPosition.lat])
+            .addTo(map);
+        }
+
+        // Несколько точек — показываем их все разом
+        if (markers.length > 1) {
+          const bounds = markers.reduce(
+            (acc, m) => acc.extend([m.lng, m.lat]),
+            new maplibregl.LngLatBounds(
+              [markers[0].lng, markers[0].lat],
+              [markers[0].lng, markers[0].lat],
+            ),
+          );
+          map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 0 });
+        }
+      }
+
+      /** Подсветка пары «карточка ↔ маркер» без перерисовки страницы. */
+      let activeId = null;
+      function setActive(id) {
+        if (activeId === id) return;
+
+        for (const target of [activeId, id]) {
+          if (!target) continue;
+          const card = document.querySelector(`[data-card="${target}"]`);
+          const isActive = target === id;
+          if (card) {
+            card.classList.toggle("border-brand", isActive);
+            card.classList.toggle("bg-brand-subtle", isActive);
+            card.classList.toggle("border-border", !isActive);
+            card.classList.toggle("hover:border-brand", !isActive);
+          }
+          markerElements.get(target)?.classList.toggle("is-active", isActive);
+        }
+
+        activeId = id;
+      }
+
+      /* ---------- Роутер ---------- */
+      const app = document.getElementById("app");
+
+      function parseRoute() {
+        const raw = location.hash.replace(/^#/, "") || "/";
+        const [path, query = ""] = raw.split("?");
+        return { path, params: new URLSearchParams(query) };
+      }
+
+      function render() {
+        const { path, params } = parseRoute();
+        destroyMap();
+        activeId = null;
+
+        const place = path.match(/^\/places\/(.+)$/);
+
+        if (path === "/explore") {
+          app.innerHTML = exploreView(params);
+          wireExplore(params);
+        } else if (place) {
+          app.innerHTML = placeView(decodeURIComponent(place[1]));
+          wirePlace(decodeURIComponent(place[1]));
+        } else {
+          app.innerHTML = homeView();
+        }
+
+        window.scrollTo({ top: 0 });
+      }
+
+      function setParam(key, value) {
+        const { params } = parseRoute();
+        if (value) params.set(key, value);
+        else params.delete(key);
+        const query = params.toString();
+        location.hash = query ? `#/explore?${query}` : "#/explore";
+        // Если хэш не изменился, hashchange не придёт — перерисовываем сами
+        render();
+      }
+
+      function wireExplore(params) {
+        for (const select of app.querySelectorAll("[data-filter]")) {
+          select.addEventListener("change", (e) =>
+            setParam(e.target.dataset.filter, e.target.value),
+          );
+        }
+
+        app
+          .querySelector("[data-reset-filters]")
+          ?.addEventListener("click", () => {
+            location.hash = "#/explore";
+            render();
+          });
+
+        app.querySelector("[data-locate]")?.addEventListener("click", locateMe);
+
+        for (const card of app.querySelectorAll("[data-card]")) {
+          card.addEventListener("mouseenter", () =>
+            setActive(card.dataset.card),
+          );
+          card.addEventListener("mouseleave", () => setActive(null));
+        }
+
+        const container = document.getElementById("explore-map");
+        if (!container) return;
+
+        const filters = {
+          city: params.get("city") || undefined,
+          category: params.get("category") || undefined,
+          maxPrice: Number(params.get("maxPrice")) || undefined,
+        };
+
+        createMap(
+          container,
+          availableLocations(filters).map((l) => ({
+            id: l.id,
+            lat: l.lat,
+            lng: l.lng,
+            title: l.title,
+            badge: formatTenge(l.minPrice),
+            href: `#/places/${l.id}`,
+          })),
+        );
+      }
+
+      function wirePlace(id) {
+        for (const form of app.querySelectorAll("[data-booking]")) {
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const note = form.querySelector("[role=alert]");
+            note.textContent =
+              "Это демо-версия: бронирование работает в основном приложении.";
+            note.hidden = false;
+          });
+        }
+
+        const place = ALL_LOCATIONS.find((l) => l.id === id);
+        const container = document.getElementById("place-map");
+        if (!place || !container) return;
+
+        createMap(
+          container,
+          [
+            {
+              id: place.id,
+              lat: place.lat,
+              lng: place.lng,
+              title: place.title,
+              badge: place.title,
+            },
+          ],
+          { zoom: 15 },
+        );
+      }
+
+      function locateMe() {
+        if (!navigator.geolocation) {
+          geoError = "Браузер не умеет определять местоположение";
+          render();
+          return;
+        }
+
+        geoPending = true;
+        geoError = null;
+        render();
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userPosition = {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            };
+            geoPending = false;
+            render();
+          },
+          () => {
+            geoError = "Не получилось определить местоположение";
+            geoPending = false;
+            render();
+          },
+          { timeout: 10000 },
+        );
+      }
+
+      /** Регистрации в статичном демо нет — объясняем это вместо тихого клика. */
+      document.addEventListener("click", (e) => {
+        const button = e.target.closest("[data-demo-auth]");
+        if (!button) return;
+        alert(
+          "Это статичное демо для показа. Регистрация, вход и бронирование работают в полном приложении SaveFood.",
+        );
+      });
+
+      window.addEventListener("hashchange", render);
+      render();
+    </script>
+  </body>
+</html>
