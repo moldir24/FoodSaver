@@ -159,20 +159,24 @@
         </a>
 
         <nav class="flex items-center gap-1">
+          <div
+            id="lang-switcher"
+            class="mr-1 flex items-center gap-0.5 rounded-card border border-border p-0.5"
+          ></div>
+          <!-- На узких экранах «Войти» прячем: переключатель языка съедает
+               ширину, а обе кнопки в демо ведут к одному и тому же окну -->
           <button
+            id="nav-login"
             type="button"
             data-demo-auth
-            class="inline-flex items-center justify-center gap-2 rounded-card font-medium transition-colors text-foreground hover:bg-surface-muted h-9 px-3 text-sm"
-          >
-            Войти
-          </button>
+            class="hidden items-center justify-center gap-2 whitespace-nowrap rounded-card font-medium transition-colors text-foreground hover:bg-surface-muted h-9 px-3 text-sm sm:inline-flex"
+          ></button>
           <button
+            id="nav-start"
             type="button"
             data-demo-auth
-            class="inline-flex items-center justify-center gap-2 rounded-card font-medium transition-colors bg-brand text-brand-foreground hover:bg-brand-hover h-9 px-3 text-sm"
-          >
-            Начать
-          </button>
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-card font-medium transition-colors bg-brand text-brand-foreground hover:bg-brand-hover h-9 px-3 text-sm"
+          ></button>
         </nav>
       </div>
     </header>
@@ -180,10 +184,9 @@
     <div id="app" class="flex flex-1 flex-col"></div>
 
     <footer
+      id="site-footer"
       class="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground"
-    >
-      SaveFood · спасаем еду в Казахстане
-    </footer>
+    ></footer>
 
     <script>
       /* ============================================================
@@ -191,6 +194,559 @@
          Разметка повторяет Next-приложение, данные — из prisma/seed.ts,
          окна выдачи пересчитываются от текущей даты при загрузке.
          ============================================================ */
+
+      /* ---------- Языки ---------- */
+      const LANGS = ["kk", "ru", "en"];
+      const LANG_LABELS = { kk: "ҚАЗ", ru: "РУС", en: "ENG" };
+
+      const DICT = {
+        ru: {
+          locale: "ru-KZ",
+          metaTitle: "SaveFood — спасай еду, экономь деньги",
+          metaDescription:
+            "Забирай непроданную еду из кафе, пекарен и магазинов Казахстана со скидкой до 70%. Меньше отходов — больше пользы.",
+          today: "сегодня",
+          tomorrow: "завтра",
+          login: "Войти",
+          start: "Начать",
+          footer: "SaveFood · спасаем еду в Казахстане",
+          langSwitcher: "Язык интерфейса",
+
+          heroBadge: "Скоро в Алматы и Астане",
+          heroBefore: "Хорошая еда не должна оказываться",
+          heroStruck: "в мусорном баке",
+          heroAfter: "",
+          heroLead:
+            "Заведения отдают непроданное за день со скидкой до 70%. Вы экономите, они не выбрасывают, еда идёт по назначению.",
+          heroCta: "Начать спасать еду",
+          heroCtaSecondary: "Посмотреть без регистрации",
+          stats: [
+            { value: "до 70%", label: "ниже обычной цены" },
+            { value: "от 990 ₸", label: "за сюрприз-пакет" },
+            { value: "0 ₸", label: "подключение заведения" },
+          ],
+          surpriseBag: "Сюрприз-пакет",
+          altBakery: "Витрина пекарни с выпечкой к концу дня",
+          altPastry: "Круассаны и выпечка на витрине",
+          altGrocery: "Полка с продуктами в магазине",
+          altCafe: "Бариста за стойкой кафе",
+
+          todayTitle: "Можно забрать сегодня",
+          todaySub: "Пакеты, которые ждут хозяина прямо сейчас",
+          allOffersLink: "Все предложения →",
+
+          stepsTitle: "Три шага и пакет ваш",
+          steps: [
+            {
+              title: "Найдите заведение рядом",
+              text: "Пекарни, кафе и магазины показывают, что у них осталось к концу дня.",
+            },
+            {
+              title: "Забронируйте сюрприз-пакет",
+              text: "Состав заранее неизвестен — зато цена ниже обычной в два-три раза.",
+            },
+            {
+              title: "Заберите в своё окно",
+              text: "Покажите QR-код на кассе и оплатите на месте. Всё.",
+            },
+          ],
+
+          categoriesTitle: "Что обычно спасают",
+          categoriesLink: "Открыть витрину →",
+          homeCategories: [
+            "Выпечка",
+            "Готовая еда",
+            "Продукты",
+            "Десерты",
+            "Напитки",
+            "Всё сразу",
+          ],
+
+          whyEyebrow: "Зачем это нужно",
+          whyTitle: "Около трети всей еды в мире не доходит до стола",
+          whyP1: "Хлеб, который не продали до закрытия, салаты с истекающей витриной, лишний ящик овощей — всё это уезжает на свалку, где гниёт и греет атмосферу. При этом еда абсолютно нормальная: ей просто не хватило покупателя.",
+          whyP2: "SaveFood закрывает этот разрыв: заведению — выручка вместо списания, вам — ужин за треть цены.",
+          whyItems: [
+            { term: "Заведению", value: "выручка вместо списания" },
+            { term: "Вам", value: "еда дешевле в 2–3 раза" },
+            { term: "Городу", value: "меньше мусора на свалке" },
+          ],
+
+          bizEyebrow: "Для бизнеса",
+          bizTitle: "У вас кафе или пекарня?",
+          bizText:
+            "Списание непроданного — это прямой убыток. Превратите его в выручку и новых гостей: разместите сюрприз-пакет за пару минут.",
+          bizBullets: [
+            "Бесплатное подключение, без абонентской платы",
+            "Пакет и окно выдачи настраиваются за пару минут",
+            "Гости приходят к закрытию и возвращаются днём",
+          ],
+          bizCta: "Подключить заведение",
+
+          faqTitle: "Частые вопросы",
+          faq: [
+            {
+              q: "Что лежит в сюрприз-пакете?",
+              a: "То, что не продалось за день: у пекарни — хлеб и выпечка, у кафе — готовые блюда. Точный состав заранее не знает даже заведение, поэтому и цена ниже. Категорию и аллергены видно в карточке до брони.",
+            },
+            {
+              q: "Как и когда платить?",
+              a: "Бронь бесплатная, оплата — на месте при получении. Если планы изменились, отмените бронь в «Моих заказах» до начала окна выдачи.",
+            },
+            {
+              q: "А если я не успею прийти?",
+              a: "Окно выдачи указано в карточке и в заказе. Если не прийти и не отменить бронь, пакет просто пропадёт — поэтому лучше отменить заранее, его успеет забрать кто-то другой.",
+            },
+            {
+              q: "Это точно свежая еда?",
+              a: "Да. Заведения выставляют то, что приготовили или привезли сегодня и что по правилам нельзя продавать на следующий день. Это не просрочка, а остатки дня.",
+            },
+          ],
+          ctaTitle: "Готовы спасти первый пакет?",
+          ctaText: "Регистрация занимает минуту, бронь — ещё меньше.",
+          ctaButton: "Создать аккаунт",
+
+          exploreTitle: "Предложения рядом",
+          exploreLead:
+            "Состав пакета заранее неизвестен — в этом и смысл. Известны цена, место и время, когда его можно забрать.",
+          allCities: "Все города",
+          anyCategory: "Любая категория",
+          anyPrice: "Любая цена",
+          priceOption: (sum) => `до ${sum} ₸`,
+          reset: "Сбросить",
+          srCity: "Город",
+          srCategory: "Категория",
+          srPrice: "Цена",
+          emptyTitle: "Ничего не нашлось",
+          emptyText:
+            "Под эти фильтры сейчас нет доступных пакетов. Попробуйте снять ограничение по цене или выбрать другой город — предложения появляются ближе к вечеру.",
+          sortNearest: "Сначала ближайшие",
+          sortSoonest: "Сначала те, что забирать раньше",
+          locate: "Рядом со мной",
+          locating: "Определяем…",
+          geoUnsupported: "Браузер не умеет определять местоположение",
+          geoFailed: "Не получилось определить местоположение",
+
+          pickupPrefix: "Забрать",
+          lastFew: "Осталось мало",
+          packages: (n) => {
+            const mod10 = n % 10;
+            const mod100 = n % 100;
+            if (mod10 === 1 && mod100 !== 11) return `${n} пакет`;
+            if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+              return `${n} пакета`;
+            return `${n} пакетов`;
+          },
+          metres: "м",
+          kilometres: "км",
+
+          backToOffers: "← Ко всем предложениям",
+          haveTitle: "Что можно забрать",
+          noneTitle: "Сейчас предложений нет",
+          noneText:
+            "Это заведение уже всё раздало или ещё не выставило пакеты на сегодня. Загляните ближе к вечеру.",
+          allergens: "Аллергены:",
+          inStock: "в наличии",
+          book: "Забронировать",
+          qtySr: "Сколько пакетов",
+          unit: "шт.",
+          howTo: "Как забрать",
+          payNote:
+            "Оплата при получении — наличными или картой в заведении.",
+          phone: "Телефон:",
+          about: "О заведении",
+          notFoundTitle: "Заведение не найдено",
+          notFoundText:
+            "Возможно, оно скрыло страницу или ссылка устарела.",
+          notFoundCta: "Ко всем предложениям",
+
+          kinds: {
+            BAKERY: "Пекарня",
+            CAFE: "Кафе",
+            RESTAURANT: "Ресторан",
+            SUPERMARKET: "Магазин",
+            HOTEL: "Отель",
+            OTHER: "Заведение",
+          },
+          categories: {
+            BAKERY: "Выпечка и хлеб",
+            MEALS: "Готовая еда",
+            GROCERIES: "Продукты",
+            DESSERTS: "Десерты",
+            DRINKS: "Напитки",
+            OTHER: "Другое",
+          },
+
+          demoBooking:
+            "Это демо-версия: бронирование работает в основном приложении.",
+          demoAuth:
+            "Это статичное демо для показа. Регистрация, вход и бронирование работают в полном приложении SaveFood.",
+        },
+
+        kk: {
+          locale: "kk-KZ",
+          metaTitle: "SaveFood — тағамды құтқар, ақша үнемде",
+          metaDescription:
+            "Қазақстандағы кафе, наубайхана және дүкендерден сатылмаған тағамды 70%-ға дейін жеңілдікпен алыңыз. Қалдық аз — пайда көп.",
+          today: "бүгін",
+          tomorrow: "ертең",
+          login: "Кіру",
+          start: "Бастау",
+          footer: "SaveFood · Қазақстанда тағамды құтқарамыз",
+          langSwitcher: "Интерфейс тілі",
+
+          heroBadge: "Жақында Алматы мен Астанада",
+          heroBefore: "Жақсы тағам",
+          heroStruck: "қоқыс жәшігіне",
+          heroAfter: "түспеуі керек",
+          heroLead:
+            "Мекемелер күні бойы сатылмаған тағамды 70%-ға дейін жеңілдікпен береді. Сіз үнемдейсіз, олар тастамайды, тағам өз мақсатына жетеді.",
+          heroCta: "Тағамды құтқаруды бастау",
+          heroCtaSecondary: "Тіркелмей қарау",
+          stats: [
+            { value: "70%-ға дейін", label: "әдеттегі бағадан арзан" },
+            { value: "990 ₸-ден", label: "сюрприз-пакет үшін" },
+            { value: "0 ₸", label: "мекемені қосу" },
+          ],
+          surpriseBag: "Сюрприз-пакет",
+          altBakery: "Күн соңындағы наубайхана витринасы",
+          altPastry: "Витринадағы круассандар мен тоқаштар",
+          altGrocery: "Дүкендегі азық-түлік сөресі",
+          altCafe: "Кафе сөресіндегі бариста",
+
+          todayTitle: "Бүгін алуға болады",
+          todaySub: "Дәл қазір иесін күтіп тұрған пакеттер",
+          allOffersLink: "Барлық ұсыныстар →",
+
+          stepsTitle: "Үш қадам — пакет сіздікі",
+          steps: [
+            {
+              title: "Жақын маңдағы мекемені табыңыз",
+              text: "Наубайханалар, кафелер мен дүкендер күн соңында не қалғанын көрсетеді.",
+            },
+            {
+              title: "Сюрприз-пакетті брондаңыз",
+              text: "Құрамы алдын ала белгісіз — оның орнына бағасы әдеттегіден екі-үш есе арзан.",
+            },
+            {
+              title: "Өз уақытыңызда алып кетіңіз",
+              text: "Кассада QR-кодты көрсетіп, сол жерде төлеңіз. Болды.",
+            },
+          ],
+
+          categoriesTitle: "Әдетте нені құтқарады",
+          categoriesLink: "Витринаны ашу →",
+          homeCategories: [
+            "Нан-тоқаш",
+            "Дайын тағам",
+            "Азық-түлік",
+            "Десерттер",
+            "Сусындар",
+            "Бәрі бірге",
+          ],
+
+          whyEyebrow: "Бұл не үшін қажет",
+          whyTitle: "Әлемдегі тағамның үштен бірі дастарханға жетпейді",
+          whyP1: "Жабылғанға дейін сатылмаған нан, мерзімі бітіп бара жатқан салаттар, артық жәшік көкөніс — бәрі қоқысқа кетеді, сонда шіріп, атмосфераны қыздырады. Ал тағамның өзі мүлде жарамды: оған жай ғана сатып алушы жетпеді.",
+          whyP2: "SaveFood осы олқылықты жабады: мекемеге — есептен шығарудың орнына табыс, сізге — үштен бір бағаға кешкі ас.",
+          whyItems: [
+            { term: "Мекемеге", value: "есептен шығарудың орнына табыс" },
+            { term: "Сізге", value: "тағам 2–3 есе арзан" },
+            { term: "Қалаға", value: "полигонда қалдық азаяды" },
+          ],
+
+          bizEyebrow: "Бизнеске",
+          bizTitle: "Сізде кафе немесе наубайхана бар ма?",
+          bizText:
+            "Сатылмағанды есептен шығару — тікелей шығын. Оны табысқа және жаңа қонақтарға айналдырыңыз: сюрприз-пакетті бірнеше минутта жариялаңыз.",
+          bizBullets: [
+            "Тегін қосылу, абоненттік төлемсіз",
+            "Пакет пен беру уақыты бірнеше минутта бапталады",
+            "Қонақтар жабылар алдында келіп, күндіз қайта оралады",
+          ],
+          bizCta: "Мекемені қосу",
+
+          faqTitle: "Жиі қойылатын сұрақтар",
+          faq: [
+            {
+              q: "Сюрприз-пакетте не бар?",
+              a: "Күні бойы сатылмаған нәрсе: наубайханада — нан мен тоқаш, кафеде — дайын тағамдар. Нақты құрамын мекеменің өзі де алдын ала білмейді, сондықтан бағасы арзан. Санат пен аллергендер брондау алдында карточкада көрінеді.",
+            },
+            {
+              q: "Қалай және қашан төлеу керек?",
+              a: "Брондау тегін, төлем — алу кезінде орнында. Жоспарыңыз өзгерсе, беру уақыты басталғанға дейін «Менің тапсырыстарым» бөлімінде брондаудан бас тартыңыз.",
+            },
+            {
+              q: "Келіп үлгермесем ше?",
+              a: "Беру уақыты карточкада және тапсырыста көрсетілген. Келмесеңіз әрі брондаудан бас тартпасаңыз, пакет жай ғана жоғалады — сондықтан алдын ала бас тартқан дұрыс, оны басқа біреу алып үлгереді.",
+            },
+            {
+              q: "Бұл шынымен жаңа тағам ба?",
+              a: "Иә. Мекемелер бүгін дайындаған немесе әкелген, ереже бойынша ертең сатуға болмайтын тағамды қояды. Бұл мерзімі өткен тағам емес, күннің қалдығы.",
+            },
+          ],
+          ctaTitle: "Алғашқы пакетті құтқаруға дайынсыз ба?",
+          ctaText: "Тіркелу бір минут алады, брондау — одан да аз.",
+          ctaButton: "Аккаунт жасау",
+
+          exploreTitle: "Жақын маңдағы ұсыныстар",
+          exploreLead:
+            "Пакеттің құрамы алдын ала белгісіз — мәні де сонда. Бағасы, орны және оны алуға болатын уақыты белгілі.",
+          allCities: "Барлық қалалар",
+          anyCategory: "Кез келген санат",
+          anyPrice: "Кез келген баға",
+          priceOption: (sum) => `${sum} ₸ дейін`,
+          reset: "Тазалау",
+          srCity: "Қала",
+          srCategory: "Санат",
+          srPrice: "Баға",
+          emptyTitle: "Ештеңе табылмады",
+          emptyText:
+            "Бұл сүзгілерге қазір қолжетімді пакет жоқ. Баға шектеуін алып тастаңыз немесе басқа қаланы таңдаңыз — ұсыныстар кешке қарай пайда болады.",
+          sortNearest: "Алдымен ең жақындары",
+          sortSoonest: "Алдымен ерте алынатындары",
+          locate: "Маған жақын",
+          locating: "Анықтап жатырмыз…",
+          geoUnsupported: "Браузер орналасқан жерді анықтай алмайды",
+          geoFailed: "Орналасқан жерді анықтау мүмкін болмады",
+
+          pickupPrefix: "Алу уақыты:",
+          lastFew: "Аз қалды",
+          packages: (n) => `${n} пакет`,
+          metres: "м",
+          kilometres: "км",
+
+          backToOffers: "← Барлық ұсыныстарға",
+          haveTitle: "Нені алуға болады",
+          noneTitle: "Қазір ұсыныс жоқ",
+          noneText:
+            "Бұл мекеме бәрін таратып қойған немесе бүгінге пакеттерін әлі қоймаған. Кешке қарай кіріп көріңіз.",
+          allergens: "Аллергендер:",
+          inStock: "бар",
+          book: "Брондау",
+          qtySr: "Қанша пакет",
+          unit: "дана",
+          howTo: "Қалай алу керек",
+          payNote:
+            "Төлем алу кезінде — мекемеде қолма-қол ақшамен немесе картамен.",
+          phone: "Телефон:",
+          about: "Мекеме туралы",
+          notFoundTitle: "Мекеме табылмады",
+          notFoundText: "Мүмкін ол бетті жасырған немесе сілтеме ескірген.",
+          notFoundCta: "Барлық ұсыныстарға",
+
+          kinds: {
+            BAKERY: "Наубайхана",
+            CAFE: "Кафе",
+            RESTAURANT: "Мейрамхана",
+            SUPERMARKET: "Дүкен",
+            HOTEL: "Қонақүй",
+            OTHER: "Мекеме",
+          },
+          categories: {
+            BAKERY: "Нан-тоқаш",
+            MEALS: "Дайын тағам",
+            GROCERIES: "Азық-түлік",
+            DESSERTS: "Десерттер",
+            DRINKS: "Сусындар",
+            OTHER: "Басқа",
+          },
+
+          demoBooking:
+            "Бұл демо-нұсқа: брондау негізгі қосымшада жұмыс істейді.",
+          demoAuth:
+            "Бұл — көрсетуге арналған статикалық демо. Тіркелу, кіру және брондау SaveFood толық қосымшасында жұмыс істейді.",
+        },
+
+        en: {
+          locale: "en-GB",
+          metaTitle: "SaveFood — save food, save money",
+          metaDescription:
+            "Pick up unsold food from cafés, bakeries and shops across Kazakhstan at up to 70% off. Less waste, more good.",
+          today: "today",
+          tomorrow: "tomorrow",
+          login: "Log in",
+          start: "Get started",
+          footer: "SaveFood · saving food in Kazakhstan",
+          langSwitcher: "Interface language",
+
+          heroBadge: "Coming soon to Almaty and Astana",
+          heroBefore: "Good food shouldn't end up",
+          heroStruck: "in the bin",
+          heroAfter: "",
+          heroLead:
+            "Venues sell what didn't go that day at up to 70% off. You save money, they throw nothing away, and the food gets eaten.",
+          heroCta: "Start saving food",
+          heroCtaSecondary: "Browse without signing up",
+          stats: [
+            { value: "up to 70%", label: "below the usual price" },
+            { value: "from 990 ₸", label: "per surprise bag" },
+            { value: "0 ₸", label: "to list a venue" },
+          ],
+          surpriseBag: "Surprise bag",
+          altBakery: "A bakery counter with pastries at the end of the day",
+          altPastry: "Croissants and pastries on display",
+          altGrocery: "A shelf of groceries in a shop",
+          altCafe: "A barista behind the café counter",
+
+          todayTitle: "Available today",
+          todaySub: "Bags waiting for someone right now",
+          allOffersLink: "All offers →",
+
+          stepsTitle: "Three steps and the bag is yours",
+          steps: [
+            {
+              title: "Find a venue nearby",
+              text: "Bakeries, cafés and shops show what's left at the end of the day.",
+            },
+            {
+              title: "Reserve a surprise bag",
+              text: "You won't know what's inside — but it costs two to three times less.",
+            },
+            {
+              title: "Collect it in your window",
+              text: "Show the QR code at the till and pay on the spot. That's it.",
+            },
+          ],
+
+          categoriesTitle: "What people usually save",
+          categoriesLink: "Open the listings →",
+          homeCategories: [
+            "Bakery",
+            "Ready meals",
+            "Groceries",
+            "Desserts",
+            "Drinks",
+            "A bit of everything",
+          ],
+
+          whyEyebrow: "Why it matters",
+          whyTitle: "About a third of all food in the world never reaches a table",
+          whyP1: "Bread left unsold at closing, salads nearing their date, one crate of vegetables too many — it all goes to landfill, where it rots and warms the atmosphere. The food itself is perfectly fine: it just didn't find a buyer.",
+          whyP2: "SaveFood closes that gap: revenue instead of write-offs for the venue, dinner at a third of the price for you.",
+          whyItems: [
+            { term: "For the venue", value: "revenue instead of write-offs" },
+            { term: "For you", value: "food 2–3 times cheaper" },
+            { term: "For the city", value: "less waste in landfill" },
+          ],
+
+          bizEyebrow: "For business",
+          bizTitle: "Run a café or a bakery?",
+          bizText:
+            "Writing off what didn't sell is a straight loss. Turn it into revenue and new guests: list a surprise bag in a couple of minutes.",
+          bizBullets: [
+            "Free to join, no subscription fee",
+            "A bag and a pickup window take minutes to set up",
+            "Guests come at closing time and return during the day",
+          ],
+          bizCta: "List your venue",
+
+          faqTitle: "Frequently asked questions",
+          faq: [
+            {
+              q: "What's in a surprise bag?",
+              a: "Whatever didn't sell that day: bread and pastries at a bakery, cooked dishes at a café. Even the venue doesn't know the exact contents in advance — that's why it costs less. The category and allergens are shown on the card before you book.",
+            },
+            {
+              q: "How and when do I pay?",
+              a: "Booking is free, you pay on collection. If your plans change, cancel the booking in “My orders” before the pickup window starts.",
+            },
+            {
+              q: "What if I can't make it in time?",
+              a: "The pickup window is shown on the card and in your order. If you don't turn up and don't cancel, the bag is simply wasted — better to cancel early so someone else can take it.",
+            },
+            {
+              q: "Is the food really fresh?",
+              a: "Yes. Venues list what they cooked or received today and can't sell tomorrow under the rules. It isn't expired food — it's what's left from the day.",
+            },
+          ],
+          ctaTitle: "Ready to save your first bag?",
+          ctaText: "Signing up takes a minute, booking even less.",
+          ctaButton: "Create an account",
+
+          exploreTitle: "Offers near you",
+          exploreLead:
+            "You won't know what's in the bag — that's the point. You do know the price, the place and when to collect it.",
+          allCities: "All cities",
+          anyCategory: "Any category",
+          anyPrice: "Any price",
+          priceOption: (sum) => `up to ${sum} ₸`,
+          reset: "Reset",
+          srCity: "City",
+          srCategory: "Category",
+          srPrice: "Price",
+          emptyTitle: "Nothing found",
+          emptyText:
+            "No bags match these filters right now. Try removing the price limit or picking another city — offers appear closer to the evening.",
+          sortNearest: "Nearest first",
+          sortSoonest: "Earliest pickup first",
+          locate: "Near me",
+          locating: "Locating…",
+          geoUnsupported: "This browser can't determine your location",
+          geoFailed: "Couldn't determine your location",
+
+          pickupPrefix: "Pick up",
+          lastFew: "Almost gone",
+          packages: (n) => `${n} ${n === 1 ? "bag" : "bags"}`,
+          metres: "m",
+          kilometres: "km",
+
+          backToOffers: "← Back to all offers",
+          haveTitle: "What you can pick up",
+          noneTitle: "No offers right now",
+          noneText:
+            "This venue has already given everything away, or hasn't listed today's bags yet. Check back closer to the evening.",
+          allergens: "Allergens:",
+          inStock: "available",
+          book: "Reserve",
+          qtySr: "How many bags",
+          unit: "pcs",
+          howTo: "How to collect",
+          payNote: "Pay on collection — cash or card at the venue.",
+          phone: "Phone:",
+          about: "About the venue",
+          notFoundTitle: "Venue not found",
+          notFoundText: "It may have hidden its page, or the link is out of date.",
+          notFoundCta: "All offers",
+
+          kinds: {
+            BAKERY: "Bakery",
+            CAFE: "Café",
+            RESTAURANT: "Restaurant",
+            SUPERMARKET: "Shop",
+            HOTEL: "Hotel",
+            OTHER: "Venue",
+          },
+          categories: {
+            BAKERY: "Bakery & bread",
+            MEALS: "Ready meals",
+            GROCERIES: "Groceries",
+            DESSERTS: "Desserts",
+            DRINKS: "Drinks",
+            OTHER: "Other",
+          },
+
+          demoBooking: "This is a demo: booking works in the full app.",
+          demoAuth:
+            "This is a static demo for show. Sign-up, login and booking work in the full SaveFood app.",
+        },
+      };
+
+      /** Текущий язык: из localStorage, иначе из языка браузера, иначе русский. */
+      function detectLang() {
+        const saved = localStorage.getItem("savefood-demo-lang");
+        if (LANGS.includes(saved)) return saved;
+        const nav = (navigator.language || "ru").slice(0, 2);
+        return LANGS.includes(nav) ? nav : "ru";
+      }
+
+      let lang = detectLang();
+      let t = DICT[lang];
+
+      /** Значение поля данных на текущем языке. */
+      const tr = (value) =>
+        value && typeof value === "object" ? (value[lang] ?? value.ru) : value;
+      /* конец словарей */
 
       /* ---------- Картинки (src/lib/images.ts) ---------- */
       const UNSPLASH = {
@@ -241,27 +797,37 @@
 
       /* ---------- Форматирование (src/lib/format.ts) ---------- */
       const TZ = "Asia/Almaty";
+
       const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
         timeZone: TZ,
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
       });
-      const timeFmt = new Intl.DateTimeFormat("ru-KZ", {
-        timeZone: TZ,
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const dateFmt = new Intl.DateTimeFormat("ru-KZ", {
-        timeZone: TZ,
-        day: "numeric",
-        month: "long",
-      });
-      const numberFmt = new Intl.NumberFormat("ru-KZ", {
-        maximumFractionDigits: 0,
-      });
 
-      const formatTenge = (amount) => `${numberFmt.format(amount)} ₸`;
+      /** Разделители, названия месяцев и формат времени зависят от языка. */
+      function makeFormatters() {
+        return {
+          time: new Intl.DateTimeFormat(t.locale, {
+            timeZone: TZ,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          date: new Intl.DateTimeFormat(t.locale, {
+            timeZone: TZ,
+            day: "numeric",
+            month: "long",
+          }),
+          number: new Intl.NumberFormat(t.locale, {
+            maximumFractionDigits: 0,
+          }),
+        };
+      }
+
+      let fmt = makeFormatters();
+
+      const formatTenge = (amount) => `${fmt.number.format(amount)} ₸`;
 
       function discountPercent(originalPrice, price) {
         if (originalPrice <= 0 || price >= originalPrice) return 0;
@@ -272,22 +838,15 @@
         const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         let prefix;
         if (dayKeyFmt.format(start) === dayKeyFmt.format(now))
-          prefix = "сегодня";
+          prefix = t.today;
         else if (dayKeyFmt.format(start) === dayKeyFmt.format(tomorrow))
-          prefix = "завтра";
-        else prefix = dateFmt.format(start);
+          prefix = t.tomorrow;
+        else prefix = fmt.date.format(start);
 
-        return `${prefix} ${timeFmt.format(start)} – ${timeFmt.format(end)}`;
+        return `${prefix} ${fmt.time.format(start)} – ${fmt.time.format(end)}`;
       }
 
-      function pluralPackages(count) {
-        const mod10 = count % 10;
-        const mod100 = count % 100;
-        if (mod10 === 1 && mod100 !== 11) return `${count} пакет`;
-        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
-          return `${count} пакета`;
-        return `${count} пакетов`;
-      }
+      const pluralPackages = (count) => t.packages(count);
 
       function distanceKm(from, to) {
         const R = 6371;
@@ -304,8 +863,8 @@
 
       const formatDistance = (km) =>
         km < 1
-          ? `${Math.round(km * 1000)} м`
-          : `${km.toFixed(1).replace(".", ",")} км`;
+          ? `${Math.round(km * 1000)} ${t.metres}`
+          : `${km.toFixed(1).replace(".", lang === "en" ? "." : ",")} ${t.kilometres}`;
 
       const esc = (value) =>
         String(value ?? "").replace(
@@ -321,50 +880,78 @@
         );
 
       /* ---------- Демо-данные (prisma/seed.ts) ---------- */
-      const KIND_LABELS = {
-        BAKERY: "Пекарня",
-        CAFE: "Кафе",
-        RESTAURANT: "Ресторан",
-        SUPERMARKET: "Магазин",
-        HOTEL: "Отель",
-        OTHER: "Заведение",
+      /** Города: ключ стабилен и живёт в адресе, подпись переводится. */
+      const CITY_NAMES = {
+        almaty: { ru: "Алматы", kk: "Алматы", en: "Almaty" },
+        astana: { ru: "Астана", kk: "Астана", en: "Astana" },
       };
 
-      const CATEGORY_LABELS = {
-        BAKERY: "Выпечка и хлеб",
-        MEALS: "Готовая еда",
-        GROCERIES: "Продукты",
-        DESSERTS: "Десерты",
-        DRINKS: "Напитки",
-        OTHER: "Другое",
+      const NAN_DASTUR = {
+        name: "Нан Дәстүр",
+        description: {
+          ru: "Сеть пекарен полного цикла. Печём четыре раза в день.",
+          kk: "Толық циклді наубайханалар желісі. Күніне төрт рет пісіреміз.",
+          en: "A full-cycle bakery chain. We bake four times a day.",
+        },
+      };
+
+      const ASIA_MARKET = {
+        name: { ru: "Азия Маркет", kk: "Азия Маркет", en: "Asia Market" },
+        description: {
+          ru: "Магазин у дома: молочка, овощи, готовая кулинария.",
+          kk: "Үй жанындағы дүкен: сүт өнімдері, көкөніс, дайын тағам.",
+          en: "A neighbourhood shop: dairy, vegetables, ready-made food.",
+        },
       };
 
       const SEED = [
         {
           id: "nan-abaya",
-          title: "Нан Дәстүр — Абая",
+          title: {
+            ru: "Нан Дәстүр — Абая",
+            kk: "Нан Дәстүр — Абай",
+            en: "Nan Dastur — Abay",
+          },
           kind: "BAKERY",
-          address: "пр. Абая, 115",
-          city: "Алматы",
+          address: {
+            ru: "пр. Абая, 115",
+            kk: "Абай даңғылы, 115",
+            en: "115 Abay Ave",
+          },
+          cityKey: "almaty",
           lat: 43.2401,
           lng: 76.9095,
-          pickupNote: "Вход с проспекта, спросите на кассе «пакет SaveFood»",
+          pickupNote: {
+            ru: "Вход с проспекта, спросите на кассе «пакет SaveFood»",
+            kk: "Кіреберіс даңғыл жағынан, кассада «SaveFood пакеті» деп сұраңыз",
+            en: "Entrance from the avenue, ask at the till for the “SaveFood bag”",
+          },
           image: "bakery",
-          businessName: "Нан Дәстүр",
-          businessDescription:
-            "Сеть пекарен полного цикла. Печём четыре раза в день.",
+          businessName: NAN_DASTUR.name,
+          businessDescription: NAN_DASTUR.description,
           phone: null,
           offers: [
             {
               id: "nan-abaya-surprise",
-              title: "Пекарский сюрприз",
+              title: {
+                ru: "Пекарский сюрприз",
+                kk: "Наубайшы сюрпризі",
+                en: "Baker's surprise",
+              },
               image: "pastry",
-              description:
-                "3–5 изделий из того, что осталось к вечеру: багеты, булочки, слойки.",
+              description: {
+                ru: "3–5 изделий из того, что осталось к вечеру: багеты, булочки, слойки.",
+                kk: "Кешке қалғаннан 3–5 өнім: багеттер, тоқаштар, қатпарлы бәліштер.",
+                en: "3–5 items from what's left by evening: baguettes, buns, pastries.",
+              },
               category: "BAKERY",
               originalPrice: 3600,
               price: 1200,
-              allergens: "Глютен, молоко, яйца. Возможны следы орехов.",
+              allergens: {
+                ru: "Глютен, молоко, яйца. Возможны следы орехов.",
+                kk: "Глютен, сүт, жұмыртқа. Жаңғақ іздері болуы мүмкін.",
+                en: "Gluten, milk, eggs. May contain traces of nuts.",
+              },
               pickup: [19, 21],
               quantity: 8,
             },
@@ -372,29 +959,47 @@
         },
         {
           id: "nan-seyfullina",
-          title: "Нан Дәстүр — Сейфуллина",
+          title: {
+            ru: "Нан Дәстүр — Сейфуллина",
+            kk: "Нан Дәстүр — Сейфуллин",
+            en: "Nan Dastur — Seifullin",
+          },
           kind: "BAKERY",
-          address: "ул. Сейфуллина, 498",
-          city: "Алматы",
+          address: {
+            ru: "ул. Сейфуллина, 498",
+            kk: "Сейфуллин көшесі, 498",
+            en: "498 Seifullin St",
+          },
+          cityKey: "almaty",
           lat: 43.2567,
           lng: 76.9286,
           pickupNote: null,
           image: "bread",
-          businessName: "Нан Дәстүр",
-          businessDescription:
-            "Сеть пекарен полного цикла. Печём четыре раза в день.",
+          businessName: NAN_DASTUR.name,
+          businessDescription: NAN_DASTUR.description,
           phone: null,
           offers: [
             {
               id: "nan-seyfullina-morning",
-              title: "Утренняя корзина",
+              title: {
+                ru: "Утренняя корзина",
+                kk: "Таңғы себет",
+                en: "Morning basket",
+              },
               image: "bread",
-              description:
-                "Вчерашний хлеб и выпечка — ещё мягкие, уже дешевле.",
+              description: {
+                ru: "Вчерашний хлеб и выпечка — ещё мягкие, уже дешевле.",
+                kk: "Кешегі нан мен тоқаш — әлі жұмсақ, бағасы арзан.",
+                en: "Yesterday's bread and pastries — still soft, already cheaper.",
+              },
               category: "BAKERY",
               originalPrice: 2800,
               price: 900,
-              allergens: "Глютен, молоко.",
+              allergens: {
+                ru: "Глютен, молоко.",
+                kk: "Глютен, сүт.",
+                en: "Gluten, milk.",
+              },
               pickup: [9, 11],
               quantity: 5,
             },
@@ -402,42 +1007,79 @@
         },
         {
           id: "coffee-dostyk",
-          title: "Coffee Point — Достык Плаза",
+          title: {
+            ru: "Coffee Point — Достык Плаза",
+            kk: "Coffee Point — Достық Плаза",
+            en: "Coffee Point — Dostyk Plaza",
+          },
           kind: "CAFE",
-          address: "пр. Достык, 111, 1 этаж",
-          city: "Алматы",
+          address: {
+            ru: "пр. Достык, 111, 1 этаж",
+            kk: "Достық даңғылы, 111, 1-қабат",
+            en: "111 Dostyk Ave, floor 1",
+          },
+          cityKey: "almaty",
           lat: 43.2335,
           lng: 76.9558,
-          pickupNote: "Первый этаж ТРЦ, справа от главного входа",
+          pickupNote: {
+            ru: "Первый этаж ТРЦ, справа от главного входа",
+            kk: "Сауда орталығының бірінші қабаты, басты кіреберістен оң жақта",
+            en: "Ground floor of the mall, to the right of the main entrance",
+          },
           image: "cafe",
           businessName: "Coffee Point",
-          businessDescription:
-            "Кофейня со своей кухней: сэндвичи, салаты, десерты.",
+          businessDescription: {
+            ru: "Кофейня со своей кухней: сэндвичи, салаты, десерты.",
+            kk: "Өз асханасы бар кофехана: сэндвичтер, салаттар, десерттер.",
+            en: "A coffee shop with its own kitchen: sandwiches, salads, desserts.",
+          },
           phone: null,
           offers: [
             {
               id: "coffee-lunch",
-              title: "Ланч-бокс дня",
+              title: {
+                ru: "Ланч-бокс дня",
+                kk: "Күннің ланч-боксы",
+                en: "Lunch box of the day",
+              },
               image: "sandwich",
-              description:
-                "Сэндвич или салат с витрины плюс десерт. Состав зависит от дня.",
+              description: {
+                ru: "Сэндвич или салат с витрины плюс десерт. Состав зависит от дня.",
+                kk: "Витринадан сэндвич не салат, қосымша десерт. Құрамы күнге байланысты.",
+                en: "A sandwich or salad from the counter plus a dessert. Contents vary by day.",
+              },
               category: "MEALS",
               originalPrice: 4500,
               price: 1700,
-              allergens: "Глютен, молоко, горчица. Возможны следы рыбы.",
+              allergens: {
+                ru: "Глютен, молоко, горчица. Возможны следы рыбы.",
+                kk: "Глютен, сүт, қыша. Балық іздері болуы мүмкін.",
+                en: "Gluten, milk, mustard. May contain traces of fish.",
+              },
               pickup: [20, 22],
               quantity: 6,
             },
             {
               id: "coffee-dessert",
-              title: "Десертный набор",
+              title: {
+                ru: "Десертный набор",
+                kk: "Десерт жинағы",
+                en: "Dessert set",
+              },
               image: "cake",
-              description:
-                "Два-три пирожных из витрины, которые не доживут до утра.",
+              description: {
+                ru: "Два-три пирожных из витрины, которые не доживут до утра.",
+                kk: "Витринадан таңға дейін сақталмайтын екі-үш тәтті.",
+                en: "Two or three pastries from the counter that won't last until morning.",
+              },
               category: "DESSERTS",
               originalPrice: 3200,
               price: 1100,
-              allergens: "Глютен, молоко, яйца, орехи.",
+              allergens: {
+                ru: "Глютен, молоко, яйца, орехи.",
+                kk: "Глютен, сүт, жұмыртқа, жаңғақ.",
+                en: "Gluten, milk, eggs, nuts.",
+              },
               pickup: [20, 22],
               quantity: 4,
             },
@@ -445,29 +1087,47 @@
         },
         {
           id: "asia-kabanbay",
-          title: "Азия Маркет — Кабанбай батыра",
+          title: {
+            ru: "Азия Маркет — Кабанбай батыра",
+            kk: "Азия Маркет — Қабанбай батыр",
+            en: "Asia Market — Kabanbay Batyr",
+          },
           kind: "SUPERMARKET",
-          address: "пр. Кабанбай батыра, 53",
-          city: "Астана",
+          address: {
+            ru: "пр. Кабанбай батыра, 53",
+            kk: "Қабанбай батыр даңғылы, 53",
+            en: "53 Kabanbay Batyr Ave",
+          },
+          cityKey: "astana",
           lat: 51.1283,
           lng: 71.4305,
           pickupNote: null,
           image: "market",
-          businessName: "Азия Маркет",
-          businessDescription:
-            "Магазин у дома: молочка, овощи, готовая кулинария.",
+          businessName: ASIA_MARKET.name,
+          businessDescription: ASIA_MARKET.description,
           phone: null,
           offers: [
             {
               id: "asia-kabanbay-basket",
-              title: "Продуктовая корзина",
+              title: {
+                ru: "Продуктовая корзина",
+                kk: "Азық-түлік себеті",
+                en: "Grocery basket",
+              },
               image: "vegetables",
-              description:
-                "Молочка и овощи с близким сроком годности. Годны ещё 1–2 дня.",
+              description: {
+                ru: "Молочка и овощи с близким сроком годности. Годны ещё 1–2 дня.",
+                kk: "Мерзімі жақындаған сүт өнімдері мен көкөністер. Тағы 1–2 күн жарамды.",
+                en: "Dairy and vegetables close to their date. Good for another 1–2 days.",
+              },
               category: "GROCERIES",
               originalPrice: 5000,
               price: 1800,
-              allergens: "Молоко. Состав меняется ежедневно.",
+              allergens: {
+                ru: "Молоко. Состав меняется ежедневно.",
+                kk: "Сүт. Құрамы күн сайын өзгереді.",
+                en: "Milk. Contents change daily.",
+              },
               pickup: [19, 22],
               quantity: 10,
             },
@@ -475,28 +1135,47 @@
         },
         {
           id: "asia-saryarka",
-          title: "Азия Маркет — Сарыарка",
+          title: {
+            ru: "Азия Маркет — Сарыарка",
+            kk: "Азия Маркет — Сарыарқа",
+            en: "Asia Market — Saryarka",
+          },
           kind: "SUPERMARKET",
-          address: "пр. Сарыарка, 31",
-          city: "Астана",
+          address: {
+            ru: "пр. Сарыарка, 31",
+            kk: "Сарыарқа даңғылы, 31",
+            en: "31 Saryarka Ave",
+          },
+          cityKey: "astana",
           lat: 51.1605,
           lng: 71.4704,
           pickupNote: null,
           image: "grocery",
-          businessName: "Азия Маркет",
-          businessDescription:
-            "Магазин у дома: молочка, овощи, готовая кулинария.",
+          businessName: ASIA_MARKET.name,
+          businessDescription: ASIA_MARKET.description,
           phone: null,
           offers: [
             {
               id: "asia-saryarka-kitchen",
-              title: "Кулинария на вынос",
+              title: {
+                ru: "Кулинария на вынос",
+                kk: "Үйге арналған дайын тағам",
+                en: "Hot deli to go",
+              },
               image: "meals",
-              description: "Готовые блюда с горячей витрины в конце дня.",
+              description: {
+                ru: "Готовые блюда с горячей витрины в конце дня.",
+                kk: "Күн соңында ыстық витринадан дайын тағамдар.",
+                en: "Ready dishes from the hot counter at the end of the day.",
+              },
               category: "MEALS",
               originalPrice: 4200,
               price: 1500,
-              allergens: "Глютен, молоко, яйца.",
+              allergens: {
+                ru: "Глютен, молоко, яйца.",
+                kk: "Глютен, сүт, жұмыртқа.",
+                en: "Gluten, milk, eggs.",
+              },
               pickup: [20, 21],
               quantity: 7,
             },
@@ -574,7 +1253,7 @@
       const availableLocations = (filters = {}) =>
         ALL_LOCATIONS.filter((l) => {
           if (l.offers.length === 0) return false;
-          if (filters.city && l.city !== filters.city) return false;
+          if (filters.city && l.cityKey !== filters.city) return false;
           return l.offers.some(
             (o) =>
               (!filters.category || o.category === filters.category) &&
@@ -582,7 +1261,7 @@
           );
         }).sort((a, b) => a.nextPickup.start - b.nextPickup.start);
 
-      const CITIES = [...new Set(ALL_LOCATIONS.map((l) => l.city))].sort();
+      const CITY_KEYS = [...new Set(ALL_LOCATIONS.map((l) => l.cityKey))];
 
       /* ---------- Кнопка (src/components/ui/button.tsx) ---------- */
       const BTN_VARIANTS = {
@@ -621,23 +1300,23 @@
               }
               ${
                 isLast
-                  ? `<span class="absolute right-3 top-3 rounded-full bg-surface/95 px-2 py-1 text-xs font-semibold text-accent shadow">Осталось мало</span>`
+                  ? `<span class="absolute right-3 top-3 rounded-full bg-surface/95 px-2 py-1 text-xs font-semibold text-accent shadow">${esc(t.lastFew)}</span>`
                   : ""
               }
             </div>
 
             <div class="p-4">
-              <h3 class="truncate font-semibold">${esc(location.title)}</h3>
+              <h3 class="truncate font-semibold">${esc(tr(location.title))}</h3>
               <p class="truncate text-sm text-muted-foreground">
-                ${esc(KIND_LABELS[location.kind])} · ${esc(location.businessName)}
+                ${esc(t.kinds[location.kind])} · ${esc(tr(location.businessName))}
               </p>
 
               <p class="mt-3 text-sm text-muted-foreground">
-                Забрать ${esc(formatPickupWindow(location.nextPickup.start, location.nextPickup.end))}
+                ${esc(t.pickupPrefix)} ${esc(formatPickupWindow(location.nextPickup.start, location.nextPickup.end))}
               </p>
 
               <p class="mt-1 truncate text-sm text-muted-foreground">
-                ${esc(location.address)}${km !== undefined ? ` · ${esc(formatDistance(km))}` : ""}
+                ${esc(tr(location.address))}${km !== undefined ? ` · ${esc(formatDistance(km))}` : ""}
               </p>
 
               <div class="mt-4 flex items-end justify-between gap-3">
@@ -658,50 +1337,20 @@
       }
 
       /* ---------- Главная (src/app/page.tsx) ---------- */
-      const STEPS = [
-        {
-          title: "Найдите заведение рядом",
-          text: "Пекарни, кафе и магазины показывают, что у них осталось к концу дня.",
-          icon: `<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" /><circle cx="12" cy="10" r="2.5" />`,
-        },
-        {
-          title: "Забронируйте сюрприз-пакет",
-          text: "Состав заранее неизвестен — зато цена ниже обычной в два-три раза.",
-          icon: `<path d="M5.5 8h13l-1 11.5a1 1 0 0 1-1 .9H7.5a1 1 0 0 1-1-.9L5.5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />`,
-        },
-        {
-          title: "Заберите в своё окно",
-          text: "Покажите QR-код на кассе и оплатите на месте. Всё.",
-          icon: `<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M20 8V5.5A1.5 1.5 0 0 0 18.5 4H16M4 16v2.5A1.5 1.5 0 0 0 5.5 20H8M20 16v2.5A1.5 1.5 0 0 1 18.5 20H16" /><path d="M7.5 12h9" />`,
-        },
+      /** Иконки шагов: от языка не зависят, тексты берутся из словаря. */
+      const STEP_ICONS = [
+        `<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" /><circle cx="12" cy="10" r="2.5" />`,
+        `<path d="M5.5 8h13l-1 11.5a1 1 0 0 1-1 .9H7.5a1 1 0 0 1-1-.9L5.5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />`,
+        `<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M20 8V5.5A1.5 1.5 0 0 0 18.5 4H16M4 16v2.5A1.5 1.5 0 0 0 5.5 20H8M20 16v2.5A1.5 1.5 0 0 1 18.5 20H16" /><path d="M7.5 12h9" />`,
       ];
 
       const HOME_CATEGORIES = [
-        { category: "BAKERY", label: "Выпечка", image: "bread" },
-        { category: "MEALS", label: "Готовая еда", image: "lunchbox" },
-        { category: "GROCERIES", label: "Продукты", image: "vegetables" },
-        { category: "DESSERTS", label: "Десерты", image: "dessert" },
-        { category: "DRINKS", label: "Напитки", image: "drinks" },
-        { category: "OTHER", label: "Всё сразу", image: "market" },
-      ];
-
-      const FAQ = [
-        {
-          q: "Что лежит в сюрприз-пакете?",
-          a: "То, что не продалось за день: у пекарни — хлеб и выпечка, у кафе — готовые блюда. Точный состав заранее не знает даже заведение, поэтому и цена ниже. Категорию и аллергены видно в карточке до брони.",
-        },
-        {
-          q: "Как и когда платить?",
-          a: "Бронь бесплатная, оплата — на месте при получении. Если планы изменились, отмените бронь в «Моих заказах» до начала окна выдачи.",
-        },
-        {
-          q: "А если я не успею прийти?",
-          a: "Окно выдачи указано в карточке и в заказе. Если не прийти и не отменить бронь, пакет просто пропадёт — поэтому лучше отменить заранее, его успеет забрать кто-то другой.",
-        },
-        {
-          q: "Это точно свежая еда?",
-          a: "Да. Заведения выставляют то, что приготовили или привезли сегодня и что по правилам нельзя продавать на следующий день. Это не просрочка, а остатки дня.",
-        },
+        { category: "BAKERY", image: "bread" },
+        { category: "MEALS", image: "lunchbox" },
+        { category: "GROCERIES", image: "vegetables" },
+        { category: "DESSERTS", image: "dessert" },
+        { category: "DRINKS", image: "drinks" },
+        { category: "OTHER", image: "market" },
       ];
 
       function homeView() {
@@ -720,29 +1369,26 @@
             <span class="absolute inline-flex h-full w-full rounded-full bg-brand opacity-60"></span>
             <span class="relative inline-flex h-2 w-2 rounded-full bg-brand"></span>
           </span>
-          Скоро в Алматы и Астане
+          ${esc(t.heroBadge)}
         </p>
 
         <h1 class="max-w-2xl text-pretty text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-          Хорошая еда не должна оказываться
-          <span class="text-muted-foreground line-through decoration-accent decoration-4">в мусорном баке</span>
+          ${esc(t.heroBefore)}
+          <span class="text-muted-foreground line-through decoration-accent decoration-4">${esc(t.heroStruck)}</span>
+          ${esc(t.heroAfter)}
         </h1>
 
         <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          Заведения отдают непроданное за день со скидкой до 70%. Вы экономите, они не выбрасывают, еда идёт по назначению.
+          ${esc(t.heroLead)}
         </p>
 
         <div class="mt-8 flex flex-wrap gap-3">
-          <button type="button" data-demo-auth class="${btnClass("primary", "lg")}">Начать спасать еду</button>
-          <a href="#/explore"><span class="${btnClass("secondary", "lg")}">Посмотреть без регистрации</span></a>
+          <button type="button" data-demo-auth class="${btnClass("primary", "lg")}">${esc(t.heroCta)}</button>
+          <a href="#/explore"><span class="${btnClass("secondary", "lg")}">${esc(t.heroCtaSecondary)}</span></a>
         </div>
 
         <div class="mt-10 grid max-w-lg grid-cols-3 gap-6 border-t border-border pt-7">
-          ${[
-            { value: "до 70%", label: "ниже обычной цены" },
-            { value: "от 990 ₸", label: "за сюрприз-пакет" },
-            { value: "0 ₸", label: "подключение заведения" },
-          ]
+          ${t.stats
             .map(
               (stat) => `
             <div>
@@ -758,14 +1404,14 @@
       <div class="savefood-rise relative" style="animation-delay: 120ms">
         <div class="grid grid-cols-2 gap-3 sm:gap-4">
           <div class="relative aspect-[3/4] overflow-hidden rounded-card bg-surface-muted shadow-sm">
-            <img src="${unsplash("bakery", 640)}" alt="Витрина пекарни с выпечкой к концу дня" class="absolute inset-0 h-full w-full object-cover" />
+            <img src="${unsplash("bakery", 640)}" alt="${esc(t.altBakery)}" class="absolute inset-0 h-full w-full object-cover" />
           </div>
           <div class="grid grid-rows-2 gap-3 sm:gap-4">
             <div class="relative overflow-hidden rounded-card bg-surface-muted shadow-sm">
-              <img src="${unsplash("pastry", 480)}" alt="Круассаны и выпечка на витрине" class="absolute inset-0 h-full w-full object-cover" />
+              <img src="${unsplash("pastry", 480)}" alt="${esc(t.altPastry)}" class="absolute inset-0 h-full w-full object-cover" />
             </div>
             <div class="relative overflow-hidden rounded-card bg-surface-muted shadow-sm">
-              <img src="${unsplash("grocery", 480)}" alt="Полка с продуктами в магазине" class="absolute inset-0 h-full w-full object-cover" />
+              <img src="${unsplash("grocery", 480)}" alt="${esc(t.altGrocery)}" class="absolute inset-0 h-full w-full object-cover" />
             </div>
           </div>
         </div>
@@ -774,7 +1420,7 @@
         <div class="absolute bottom-3 left-3 flex items-center gap-3 rounded-card border border-border bg-surface/95 p-3 shadow-lg backdrop-blur sm:bottom-4 sm:left-4">
           <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-sm font-bold text-accent">−70%</span>
           <span class="text-sm leading-tight">
-            <span class="block font-semibold">Сюрприз-пакет</span>
+            <span class="block font-semibold">${esc(t.surpriseBag)}</span>
             <span class="text-muted-foreground line-through">${formatTenge(4500)}</span>
             <span class="font-semibold text-brand">${formatTenge(1350)}</span>
           </span>
@@ -790,10 +1436,10 @@
   <section class="mx-auto max-w-6xl px-4 pb-4">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2 class="text-2xl font-semibold tracking-tight">Можно забрать сегодня</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Пакеты, которые ждут хозяина прямо сейчас</p>
+        <h2 class="text-2xl font-semibold tracking-tight">${esc(t.todayTitle)}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">${esc(t.todaySub)}</p>
       </div>
-      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">Все предложения →</a>
+      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">${esc(t.allOffersLink)}</a>
     </div>
 
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -806,23 +1452,23 @@
   <!-- ——— Как это работает ——— -->
   <section class="mt-12 border-y border-border bg-surface">
     <div class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
-      <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">Три шага и пакет ваш</h2>
+      <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">${esc(t.stepsTitle)}</h2>
 
       <div class="relative mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
-        ${STEPS.map(
+        ${t.steps.map(
           (step, i) => `
         <div class="relative">
           ${
-            i < STEPS.length - 1
+            i < t.steps.length - 1
               ? `<span aria-hidden class="absolute -right-8 left-14 top-6 hidden border-t border-dashed border-border sm:block"></span>`
               : ""
           }
           <span class="relative mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-brand-subtle text-brand ring-8 ring-surface">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="h-6 w-6">${step.icon}</svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="h-6 w-6">${STEP_ICONS[i]}</svg>
             <span class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-brand-foreground">${i + 1}</span>
           </span>
-          <h3 class="mb-2 font-semibold">${step.title}</h3>
-          <p class="text-sm leading-relaxed text-muted-foreground">${step.text}</p>
+          <h3 class="mb-2 font-semibold">${esc(step.title)}</h3>
+          <p class="text-sm leading-relaxed text-muted-foreground">${esc(step.text)}</p>
         </div>`,
         ).join("")}
       </div>
@@ -832,18 +1478,18 @@
   <!-- ——— Категории ——— -->
   <section class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">Что обычно спасают</h2>
-      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">Открыть витрину →</a>
+      <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">${esc(t.categoriesTitle)}</h2>
+      <a href="#/explore" class="text-sm font-medium text-brand hover:text-brand-hover">${esc(t.categoriesLink)}</a>
     </div>
 
     <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
       ${HOME_CATEGORIES.map(
-        (item) => `
+        (item, i) => `
       <li>
         <a href="#/explore?category=${item.category}" class="group relative block aspect-[4/5] overflow-hidden rounded-card bg-surface-muted shadow-sm transition-shadow hover:shadow-md">
           <img src="${unsplash(item.image, 400)}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
           <span aria-hidden class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></span>
-          <span class="absolute inset-x-0 bottom-0 p-3 text-sm font-semibold text-white">${item.label}</span>
+          <span class="absolute inset-x-0 bottom-0 p-3 text-sm font-semibold text-white">${esc(t.homeCategories[i])}</span>
         </a>
       </li>`,
       ).join("")}
@@ -855,29 +1501,21 @@
     <div class="mx-auto max-w-6xl px-4 py-16 sm:py-20">
       <div class="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-white/60">Зачем это нужно</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-white/60">${esc(t.whyEyebrow)}</p>
           <h2 class="mt-4 text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">
-            Около трети всей еды в мире не доходит до стола
+            ${esc(t.whyTitle)}
           </h2>
-          <p class="mt-5 max-w-xl leading-relaxed text-white/75">
-            Хлеб, который не продали до закрытия, салаты с истекающей витриной, лишний ящик овощей — всё это уезжает на свалку, где гниёт и греет атмосферу. При этом еда абсолютно нормальная: ей просто не хватило покупателя.
-          </p>
-          <p class="mt-4 max-w-xl leading-relaxed text-white/75">
-            SaveFood закрывает этот разрыв: заведению — выручка вместо списания, вам — ужин за треть цены.
-          </p>
+          <p class="mt-5 max-w-xl leading-relaxed text-white/75">${esc(t.whyP1)}</p>
+          <p class="mt-4 max-w-xl leading-relaxed text-white/75">${esc(t.whyP2)}</p>
         </div>
 
         <dl class="grid gap-4 sm:grid-cols-3">
-          ${[
-            { term: "Заведению", value: "выручка вместо списания" },
-            { term: "Вам", value: "еда дешевле в 2–3 раза" },
-            { term: "Городу", value: "меньше мусора на свалке" },
-          ]
+          ${t.whyItems
             .map(
               (item) => `
           <div class="rounded-card border border-white/15 bg-white/5 p-5">
-            <dt class="text-xs font-semibold uppercase tracking-widest text-white/60">${item.term}</dt>
-            <dd class="mt-2 font-semibold leading-snug">${item.value}</dd>
+            <dt class="text-xs font-semibold uppercase tracking-widest text-white/60">${esc(item.term)}</dt>
+            <dd class="mt-2 font-semibold leading-snug">${esc(item.value)}</dd>
           </div>`,
             )
             .join("")}
@@ -891,35 +1529,29 @@
     <div class="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
       <div class="grid lg:grid-cols-2">
         <div class="p-8 sm:p-10 lg:p-12">
-          <p class="text-xs font-semibold uppercase tracking-widest text-accent">Для бизнеса</p>
-          <h2 class="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">У вас кафе или пекарня?</h2>
-          <p class="mt-4 max-w-xl leading-relaxed text-muted-foreground">
-            Списание непроданного — это прямой убыток. Превратите его в выручку и новых гостей: разместите сюрприз-пакет за пару минут.
-          </p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-accent">${esc(t.bizEyebrow)}</p>
+          <h2 class="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">${esc(t.bizTitle)}</h2>
+          <p class="mt-4 max-w-xl leading-relaxed text-muted-foreground">${esc(t.bizText)}</p>
 
           <ul class="mt-6 space-y-3 text-sm">
-            ${[
-              "Бесплатное подключение, без абонентской платы",
-              "Пакет и окно выдачи настраиваются за пару минут",
-              "Гости приходят к закрытию и возвращаются днём",
-            ]
+            ${t.bizBullets
               .map(
                 (item) => `
             <li class="flex gap-3">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="mt-0.5 h-4 w-4 shrink-0 text-brand">
                 <path d="M4 10.5l4 4 8-9" />
               </svg>
-              <span class="text-muted-foreground">${item}</span>
+              <span class="text-muted-foreground">${esc(item)}</span>
             </li>`,
               )
               .join("")}
           </ul>
 
-          <button type="button" data-demo-auth class="mt-8 ${btnClass("primary", "lg")}">Подключить заведение</button>
+          <button type="button" data-demo-auth class="mt-8 ${btnClass("primary", "lg")}">${esc(t.bizCta)}</button>
         </div>
 
         <div class="relative min-h-60 bg-surface-muted lg:min-h-0">
-          <img src="${unsplash("cafe", 800)}" alt="Бариста за стойкой кафе" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+          <img src="${unsplash("cafe", 800)}" alt="${esc(t.altCafe)}" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
         </div>
       </div>
     </div>
@@ -927,27 +1559,29 @@
 
   <!-- ——— Вопросы ——— -->
   <section class="mx-auto max-w-3xl px-4 pb-20">
-    <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">Частые вопросы</h2>
+    <h2 class="text-center text-2xl font-semibold tracking-tight sm:text-3xl">${esc(t.faqTitle)}</h2>
 
     <div class="mt-8 divide-y divide-border overflow-hidden rounded-card border border-border bg-surface">
-      ${FAQ.map(
-        (item) => `
+      ${t.faq
+        .map(
+          (item) => `
       <details class="group">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 font-medium hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
-          ${item.q}
+          ${esc(item.q)}
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45">
             <path d="M10 4v12M4 10h12" />
           </svg>
         </summary>
-        <p class="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">${item.a}</p>
+        <p class="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">${esc(item.a)}</p>
       </details>`,
-      ).join("")}
+        )
+        .join("")}
     </div>
 
     <div class="mt-10 rounded-card bg-brand-subtle p-8 text-center">
-      <h3 class="text-xl font-semibold tracking-tight">Готовы спасти первый пакет?</h3>
-      <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Регистрация занимает минуту, бронь — ещё меньше.</p>
-      <button type="button" data-demo-auth class="mt-6 ${btnClass("primary", "lg")}">Создать аккаунт</button>
+      <h3 class="text-xl font-semibold tracking-tight">${esc(t.ctaTitle)}</h3>
+      <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">${esc(t.ctaText)}</p>
+      <button type="button" data-demo-auth class="mt-6 ${btnClass("primary", "lg")}">${esc(t.ctaButton)}</button>
     </div>
   </section>
 </main>`;
@@ -965,9 +1599,11 @@
 
       function exploreView(params) {
         const filters = {
-          city: params.get("city") || undefined,
+          city: CITY_KEYS.includes(params.get("city"))
+            ? params.get("city")
+            : undefined,
           category:
-            params.get("category") in CATEGORY_LABELS
+            params.get("category") in t.categories
               ? params.get("category")
               : undefined,
           maxPrice: Number(params.get("maxPrice")) || undefined,
@@ -987,38 +1623,38 @@
 
         const filtersBar = `
       <div class="flex flex-wrap items-center gap-2 transition-opacity">
-        <label class="sr-only" for="filter-city">Город</label>
+        <label class="sr-only" for="filter-city">${esc(t.srCity)}</label>
         <select id="filter-city" data-filter="city" class="${selectClass}">
-          <option value="">Все города</option>
-          ${CITIES.map(
-            (city) =>
-              `<option value="${esc(city)}" ${filters.city === city ? "selected" : ""}>${esc(city)}</option>`,
+          <option value="">${esc(t.allCities)}</option>
+          ${CITY_KEYS.map(
+            (key) =>
+              `<option value="${key}" ${filters.city === key ? "selected" : ""}>${esc(tr(CITY_NAMES[key]))}</option>`,
           ).join("")}
         </select>
 
-        <label class="sr-only" for="filter-category">Категория</label>
+        <label class="sr-only" for="filter-category">${esc(t.srCategory)}</label>
         <select id="filter-category" data-filter="category" class="${selectClass}">
-          <option value="">Любая категория</option>
-          ${Object.entries(CATEGORY_LABELS)
+          <option value="">${esc(t.anyCategory)}</option>
+          ${Object.entries(t.categories)
             .map(
               ([value, label]) =>
-                `<option value="${value}" ${filters.category === value ? "selected" : ""}>${label}</option>`,
+                `<option value="${value}" ${filters.category === value ? "selected" : ""}>${esc(label)}</option>`,
             )
             .join("")}
         </select>
 
-        <label class="sr-only" for="filter-price">Цена</label>
+        <label class="sr-only" for="filter-price">${esc(t.srPrice)}</label>
         <select id="filter-price" data-filter="maxPrice" class="${selectClass}">
-          <option value="">Любая цена</option>
+          <option value="">${esc(t.anyPrice)}</option>
           ${PRICE_OPTIONS.map(
             (price) =>
-              `<option value="${price}" ${filters.maxPrice === price ? "selected" : ""}>до ${price.toLocaleString("ru-KZ")} ₸</option>`,
+              `<option value="${price}" ${filters.maxPrice === price ? "selected" : ""}>${esc(t.priceOption(fmt.number.format(price)))}</option>`,
           ).join("")}
         </select>
 
         ${
           hasFilters
-            ? `<button type="button" data-reset-filters class="h-10 rounded-card px-3 text-sm text-muted-foreground underline hover:text-foreground">Сбросить</button>`
+            ? `<button type="button" data-reset-filters class="h-10 rounded-card px-3 text-sm text-muted-foreground underline hover:text-foreground">${esc(t.reset)}</button>`
             : ""
         }
       </div>`;
@@ -1027,21 +1663,19 @@
           locations.length === 0
             ? `
       <div class="rounded-card border border-dashed border-border bg-surface p-10 text-center">
-        <p class="font-medium">Ничего не нашлось</p>
-        <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Под эти фильтры сейчас нет доступных пакетов. Попробуйте снять ограничение по цене или выбрать другой город — предложения появляются ближе к вечеру.
-        </p>
+        <p class="font-medium">${esc(t.emptyTitle)}</p>
+        <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">${esc(t.emptyText)}</p>
       </div>`
             : `
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between gap-3">
             <p class="text-sm text-muted-foreground">
-              ${userPosition ? "Сначала ближайшие" : "Сначала те, что забирать раньше"}
+              ${esc(userPosition ? t.sortNearest : t.sortSoonest)}
             </p>
             ${
               !userPosition
-                ? `<button type="button" data-locate class="${btnClass("secondary", "sm")}" ${geoPending ? "disabled" : ""}>${geoPending ? "Определяем…" : "Рядом со мной"}</button>`
+                ? `<button type="button" data-locate class="${btnClass("secondary", "sm")}" ${geoPending ? "disabled" : ""}>${esc(geoPending ? t.locating : t.locate)}</button>`
                 : ""
             }
           </div>
@@ -1063,10 +1697,8 @@
 
         return `
 <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
-  <h1 class="text-2xl font-semibold">Предложения рядом</h1>
-  <p class="mt-1 text-sm text-muted-foreground">
-    Состав пакета заранее неизвестен — в этом и смысл. Известны цена, место и время, когда его можно забрать.
-  </p>
+  <h1 class="text-2xl font-semibold">${esc(t.exploreTitle)}</h1>
+  <p class="mt-1 text-sm text-muted-foreground">${esc(t.exploreLead)}</p>
 
   <div class="my-6">${filtersBar}</div>
 
@@ -1083,9 +1715,9 @@
         if (!location) {
           return `
 <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 py-20 text-center">
-  <h1 class="text-2xl font-semibold">Заведение не найдено</h1>
-  <p class="mt-2 text-sm text-muted-foreground">Возможно, оно скрыло страницу или ссылка устарела.</p>
-  <a href="#/explore" class="mt-6 inline-block"><span class="${btnClass("primary", "md")}">Ко всем предложениям</span></a>
+  <h1 class="text-2xl font-semibold">${esc(t.notFoundTitle)}</h1>
+  <p class="mt-2 text-sm text-muted-foreground">${esc(t.notFoundText)}</p>
+  <a href="#/explore" class="mt-6 inline-block"><span class="${btnClass("primary", "md")}">${esc(t.notFoundCta)}</span></a>
 </main>`;
         }
 
@@ -1093,7 +1725,7 @@
           location.offers.length === 0
             ? `
       <div class="rounded-card border border-dashed border-border bg-surface p-8 text-center text-sm text-muted-foreground">
-        Это заведение уже всё раздало или ещё не выставило пакеты на сегодня. Загляните ближе к вечеру.
+        ${esc(t.noneText)}
       </div>`
             : `
       <div class="flex flex-col gap-4">
@@ -1109,7 +1741,7 @@
 
             <div class="min-w-0 flex-1">
               <div class="flex items-start justify-between gap-3">
-                <h3 class="font-semibold">${esc(offer.title)}</h3>
+                <h3 class="font-semibold">${esc(tr(offer.title))}</h3>
                 <div class="shrink-0 text-right">
                   <div class="font-bold">${esc(formatTenge(offer.price))}</div>
                   ${
@@ -1122,12 +1754,12 @@
 
               ${
                 offer.description
-                  ? `<p class="mt-2 text-sm text-muted-foreground">${esc(offer.description)}</p>`
+                  ? `<p class="mt-2 text-sm text-muted-foreground">${esc(tr(offer.description))}</p>`
                   : ""
               }
               ${
                 offer.allergens
-                  ? `<p class="mt-2 text-xs text-muted-foreground"><span class="font-medium">Аллергены:</span> ${esc(offer.allergens)}</p>`
+                  ? `<p class="mt-2 text-xs text-muted-foreground"><span class="font-medium">${esc(t.allergens)}</span> ${esc(tr(offer.allergens))}</p>`
                   : ""
               }
             </div>
@@ -1144,22 +1776,22 @@
             <li class="flex flex-wrap items-center justify-between gap-3 rounded-card bg-surface-muted px-3 py-2">
               <div class="text-sm">
                 <div class="font-medium">${esc(formatPickupWindow(batch.pickupStart, batch.pickupEnd))}</div>
-                <div class="text-xs text-muted-foreground">${esc(pluralPackages(batch.available))} в наличии</div>
+                <div class="text-xs text-muted-foreground">${esc(pluralPackages(batch.available))} ${esc(t.inStock)}</div>
               </div>
 
               <form data-booking class="flex flex-col items-end gap-2">
                 <div class="flex items-center gap-2">
                   ${
                     maxQuantity > 1
-                      ? `<label for="qty-${esc(batch.id)}" class="sr-only">Сколько пакетов</label>
+                      ? `<label for="qty-${esc(batch.id)}" class="sr-only">${esc(t.qtySr)}</label>
                          <select id="qty-${esc(batch.id)}" class="h-9 rounded-card border border-border bg-surface px-2 text-sm">
                            ${Array.from({ length: maxQuantity }, (_, i) => i + 1)
-                             .map((n) => `<option value="${n}">${n} шт.</option>`)
+                             .map((n) => `<option value="${n}">${n} ${esc(t.unit)}</option>`)
                              .join("")}
                          </select>`
                       : ""
                   }
-                  <button type="submit" class="${btnClass("primary", "sm")}">Забронировать</button>
+                  <button type="submit" class="${btnClass("primary", "sm")}">${esc(t.book)}</button>
                 </div>
                 <p role="alert" hidden class="text-right text-xs text-danger"></p>
               </form>
@@ -1174,22 +1806,22 @@
 
         return `
 <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-  <a href="#/explore" class="text-sm text-muted-foreground underline hover:text-foreground">← Ко всем предложениям</a>
+  <a href="#/explore" class="text-sm text-muted-foreground underline hover:text-foreground">${esc(t.backToOffers)}</a>
 
   <div class="relative mt-4 h-56 w-full overflow-hidden rounded-card bg-surface-muted sm:h-72">
     <img src="${esc(locationImage(location.kind, location.imageUrl, 1400))}" alt="" class="absolute inset-0 h-full w-full object-cover" />
     <!-- Затемнение снизу: без него белый заголовок теряется на светлых фото -->
     <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
     <header class="absolute inset-x-0 bottom-0 p-5">
-      <h1 class="text-2xl font-semibold text-white drop-shadow">${esc(location.title)}</h1>
-      <p class="mt-1 text-sm text-white/90 drop-shadow">${esc(KIND_LABELS[location.kind])} · ${esc(location.businessName)}</p>
+      <h1 class="text-2xl font-semibold text-white drop-shadow">${esc(tr(location.title))}</h1>
+      <p class="mt-1 text-sm text-white/90 drop-shadow">${esc(t.kinds[location.kind])} · ${esc(tr(location.businessName))}</p>
     </header>
   </div>
 
   <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
     <section>
       <h2 class="mb-3 text-lg font-semibold">
-        ${location.offers.length > 0 ? "Что можно забрать" : "Сейчас предложений нет"}
+        ${esc(location.offers.length > 0 ? t.haveTitle : t.noneTitle)}
       </h2>
       ${offersHtml}
     </section>
@@ -1200,27 +1832,27 @@
       </div>
 
       <div class="rounded-card border border-border bg-surface p-4 text-sm">
-        <h2 class="mb-2 font-semibold">Как забрать</h2>
-        <p class="text-muted-foreground">${esc(location.address)}</p>
-        <p class="text-muted-foreground">${esc(location.city)}</p>
+        <h2 class="mb-2 font-semibold">${esc(t.howTo)}</h2>
+        <p class="text-muted-foreground">${esc(tr(location.address))}</p>
+        <p class="text-muted-foreground">${esc(tr(CITY_NAMES[location.cityKey]))}</p>
         ${
           location.pickupNote
-            ? `<p class="mt-2 rounded-card bg-brand-subtle px-3 py-2 text-brand">${esc(location.pickupNote)}</p>`
+            ? `<p class="mt-2 rounded-card bg-brand-subtle px-3 py-2 text-brand">${esc(tr(location.pickupNote))}</p>`
             : ""
         }
         ${
           location.phone
-            ? `<p class="mt-2 text-muted-foreground">Телефон: <a href="tel:${esc(location.phone)}" class="underline">${esc(location.phone)}</a></p>`
+            ? `<p class="mt-2 text-muted-foreground">${esc(t.phone)} <a href="tel:${esc(location.phone)}" class="underline">${esc(location.phone)}</a></p>`
             : ""
         }
-        <p class="mt-3 text-xs text-muted-foreground">Оплата при получении — наличными или картой в заведении.</p>
+        <p class="mt-3 text-xs text-muted-foreground">${esc(t.payNote)}</p>
       </div>
 
       ${
         location.businessDescription
           ? `<div class="rounded-card border border-border bg-surface p-4 text-sm">
-               <h2 class="mb-2 font-semibold">О заведении</h2>
-               <p class="text-muted-foreground">${esc(location.businessDescription)}</p>
+               <h2 class="mb-2 font-semibold">${esc(t.about)}</h2>
+               <p class="text-muted-foreground">${esc(tr(location.businessDescription))}</p>
              </div>`
           : ""
       }
@@ -1342,10 +1974,11 @@
         return { path, params: new URLSearchParams(query) };
       }
 
-      function render() {
+      function render({ keepScroll = false } = {}) {
         const { path, params } = parseRoute();
         destroyMap();
         activeId = null;
+        renderChrome();
 
         const place = path.match(/^\/places\/(.+)$/);
 
@@ -1359,7 +1992,7 @@
           app.innerHTML = homeView();
         }
 
-        window.scrollTo({ top: 0 });
+        if (!keepScroll) window.scrollTo({ top: 0 });
       }
 
       function setParam(key, value) {
@@ -1410,7 +2043,7 @@
             id: l.id,
             lat: l.lat,
             lng: l.lng,
-            title: l.title,
+            title: tr(l.title),
             badge: formatTenge(l.minPrice),
             href: `#/places/${l.id}`,
           })),
@@ -1422,8 +2055,7 @@
           form.addEventListener("submit", (e) => {
             e.preventDefault();
             const note = form.querySelector("[role=alert]");
-            note.textContent =
-              "Это демо-версия: бронирование работает в основном приложении.";
+            note.textContent = t.demoBooking;
             note.hidden = false;
           });
         }
@@ -1439,8 +2071,8 @@
               id: place.id,
               lat: place.lat,
               lng: place.lng,
-              title: place.title,
-              badge: place.title,
+              title: tr(place.title),
+              badge: tr(place.title),
             },
           ],
           { zoom: 15 },
@@ -1480,9 +2112,49 @@
       document.addEventListener("click", (e) => {
         const button = e.target.closest("[data-demo-auth]");
         if (!button) return;
-        alert(
-          "Это статичное демо для показа. Регистрация, вход и бронирование работают в полном приложении SaveFood.",
-        );
+        alert(t.demoAuth);
+      });
+
+      /* ---------- Переключение языка ---------- */
+      function setLang(next) {
+        if (!LANGS.includes(next) || next === lang) return;
+
+        lang = next;
+        t = DICT[lang];
+        fmt = makeFormatters();
+        localStorage.setItem("savefood-demo-lang", lang);
+
+        // Прокрутку сохраняем: язык меняют по ходу чтения, а не от начала
+        const y = window.scrollY;
+        render({ keepScroll: true });
+        window.scrollTo(0, y);
+      }
+
+      function renderChrome() {
+        document.documentElement.lang = lang;
+        document.title = t.metaTitle;
+        document
+          .querySelector('meta[name="description"]')
+          .setAttribute("content", t.metaDescription);
+
+        document.getElementById("lang-switcher").innerHTML = LANGS.map(
+          (code) => `
+          <button type="button" data-set-lang="${code}" aria-pressed="${code === lang}"
+                  class="rounded-card px-2 py-1 text-xs font-semibold transition-colors ${
+                    code === lang
+                      ? "bg-brand-subtle text-brand"
+                      : "text-muted-foreground hover:text-foreground"
+                  }">${LANG_LABELS[code]}</button>`,
+        ).join("");
+
+        document.getElementById("nav-login").textContent = t.login;
+        document.getElementById("nav-start").textContent = t.start;
+        document.getElementById("site-footer").textContent = t.footer;
+      }
+
+      document.addEventListener("click", (e) => {
+        const button = e.target.closest("[data-set-lang]");
+        if (button) setLang(button.dataset.setLang);
       });
 
       window.addEventListener("hashchange", render);
